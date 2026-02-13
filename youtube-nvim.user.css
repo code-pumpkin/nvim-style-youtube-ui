@@ -1,0 +1,803 @@
+@-moz-document domain("www.youtube.com") {
+
+/* ============================================================
+   YouTube NeoVim v4 — Ayu Dark theme + Vim keybindings
+
+   CREDITS / ATTRIBUTION:
+   Portions of this userstyle were inspired by or adapted from:
+
+   - "Roundless YouTube" by imluciddreaming
+     https://userstyles.world/style/26523/roundless-youtube
+     Border-radius removal pattern (section 5)
+     License: No License specified
+
+   - "Clean YouTube" by 0ko
+     https://userstyles.world/style/10175/clean-youtube
+     https://codeberg.org/0ko/UserStyles
+     Shorts hiding selectors, voice search button hide (section 6, 11)
+     License: MIT
+
+   - "AdashimaaTube" by sapondanaisriwan
+     https://userstyles.world/style/6944/old-youtube-layout-in-2021-2022
+     https://github.com/sapondanaisriwan/AdashimaaTube
+     Grid layout approach, videos-per-row variables, avatar hiding (section 5)
+     License: MIT
+   ============================================================ */
+
+/* ============================================================
+   0. AYU DARK COLOR PALETTE
+   ============================================================ */
+:root {
+    --nvim-bg:         #0d1017;
+    --nvim-bg-dark:    #0b0e14;
+    --nvim-bg-float:   #131721;
+    --nvim-bg-hover:   #1a1e29;
+    --nvim-bg-sel:     #1d222e;
+    --nvim-fg:         #bfbdb6;
+    --nvim-fg-dim:     #565b66;
+    --nvim-fg-dark:    #484d58;
+    --nvim-border:     #1d222e;
+    --nvim-accent:     #e6b450;
+    --nvim-green:      #7fd962;
+    --nvim-red:        #d95757;
+    --nvim-yellow:     #ffb454;
+    --nvim-cyan:       #73b8ff;
+    --nvim-magenta:    #d2a6ff;
+    --nvim-statusbar:  #0b0e14;
+    --nvim-statusfg:   #e6b450;
+    --nvim-line-nr:    #484d58;
+    --nvim-cursor-line:#131721;
+}
+
+/* ============================================================
+   1. GLOBAL DARK BACKGROUND OVERRIDE
+   ============================================================ */
+html, body,
+ytd-app,
+#content,
+ytd-browse,
+ytd-search,
+ytd-watch-flexy,
+ytd-page-manager,
+ytd-two-column-browse-results-renderer,
+ytd-rich-grid-renderer,
+#page-manager,
+tp-yt-app-drawer {
+    background-color: var(--nvim-bg) !important;
+    color: var(--nvim-fg) !important;
+}
+
+html[dark] {
+    --yt-spec-base-background:       var(--nvim-bg) !important;
+    --yt-spec-raised-background:     var(--nvim-bg) !important;
+    --yt-spec-menu-background:       var(--nvim-bg-float) !important;
+    --yt-spec-general-background-a:  var(--nvim-bg) !important;
+    --yt-spec-general-background-b:  var(--nvim-bg) !important;
+    --yt-spec-general-background-c:  var(--nvim-bg) !important;
+    --yt-spec-brand-background-solid:var(--nvim-bg) !important;
+    --yt-spec-text-primary:          var(--nvim-fg) !important;
+    --yt-spec-text-secondary:        var(--nvim-fg-dim) !important;
+    --yt-spec-badge-chip-background: var(--nvim-bg-sel) !important;
+    --yt-spec-10-percent-layer:      var(--nvim-bg-hover) !important;
+}
+
+html:not([dark]) { filter: none !important; }
+
+/* ============================================================
+   2. NUKE THE TOP BAR (masthead)
+   ============================================================ */
+#masthead-container, ytd-masthead, #masthead { display: none !important; }
+ytd-app { --ytd-masthead-height: 0px !important; margin-top: 0 !important; }
+#page-manager { margin-top: 0 !important; }
+
+/* ============================================================
+   3. NUKE THE SIDEBAR
+   ============================================================ */
+tp-yt-app-drawer, #guide, #guide-button, ytd-mini-guide-renderer,
+#guide-inner-content, app-drawer, tp-yt-app-drawer[opened], #guide-wrapper {
+    display: none !important; width: 0 !important;
+}
+ytd-page-manager { margin-left: 0 !important; }
+ytd-app[guide-persistent-and-visible] #page-manager.ytd-app { margin-left: 0 !important; }
+ytd-browse[page-subtype="home"] ytd-two-column-browse-results-renderer { margin-left: 0 !important; }
+
+/* ============================================================
+   4. NUKE CHIPS / TAG BAR / BLUR
+   ============================================================ */
+ytd-feed-filter-chip-bar-renderer, #chips-wrapper,
+#header-bar ytd-feed-filter-chip-bar-renderer,
+ytd-browse yt-chip-cloud-renderer, ytd-search yt-chip-cloud-renderer,
+ytd-browse iron-selector#chips, ytd-search iron-selector#chips,
+#header.ytd-rich-grid-renderer, ytd-rich-grid-renderer > #header,
+#immersive-header-container, .immersive-header-container,
+ytd-browse[page-subtype="home"] #header, ytd-browse #header.ytd-browse,
+#frosted-glass { display: none !important; }
+
+ytd-rich-grid-renderer::before, ytd-rich-grid-renderer::after,
+#header.ytd-rich-grid-renderer::before, #header.ytd-rich-grid-renderer::after {
+    display: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+}
+ytd-browse[page-subtype="home"] *, ytd-search * {
+    backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+}
+
+/* ============================================================
+   5. HOME PAGE -- 6 VIDEOS PER ROW, DENSE GRID
+   ============================================================ */
+ytd-rich-grid-renderer {
+    --ytd-rich-grid-items-per-row: 6 !important;
+    --ytd-rich-grid-posts-per-row: 6 !important;
+    --ytd-rich-grid-slim-items-per-row: 6 !important;
+    max-width: 100% !important; width: 100% !important; padding: 4px !important;
+}
+ytd-rich-grid-renderer #contents.ytd-rich-grid-renderer { padding: 0 4px !important; }
+ytd-rich-grid-row { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+ytd-rich-grid-row #contents.ytd-rich-grid-row { display: flex !important; flex-wrap: nowrap !important; gap: 4px !important; }
+ytd-rich-item-renderer {
+    width: calc(100% / 6 - 10px) !important; max-width: calc(100% / 6 - 10px) !important;
+    min-width: 0 !important; margin: 6px 0 !important; padding: 0 4px 8px 4px !important;
+}
+ytd-rich-item-renderer ytd-thumbnail { border-radius: 0 !important; }
+ytd-thumbnail img { border-radius: 0 !important; }
+
+#video-title-link, #video-title {
+    font-size: 12px !important; line-height: 1.3 !important;
+    font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace !important;
+    color: var(--nvim-fg) !important; -webkit-line-clamp: 2 !important;
+    max-height: 2.6em !important; overflow: hidden !important;
+}
+ytd-channel-name, #channel-name, .ytd-channel-name a, #text.ytd-channel-name {
+    font-size: 11px !important; font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    color: var(--nvim-fg-dim) !important;
+}
+#metadata-line, .ytd-video-meta-block, #metadata-line span {
+    font-size: 10px !important; font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    color: var(--nvim-fg-dark) !important;
+}
+ytd-rich-item-renderer #avatar-link,
+ytd-rich-item-renderer ytd-channel-thumbnail-with-link-renderer { display: none !important; }
+#details.ytd-rich-grid-media, #meta.ytd-rich-grid-media { padding: 4px 2px !important; margin: 0 !important; }
+
+*, *::after, *::before { border-radius: 0 !important; }
+.ytp-scrubber-button, .ytp-volume-slider-handle, .ytp-spinner-circle { border-radius: 50% !important; }
+
+/* ============================================================
+   6. HIDE SHORTS + JUNK everywhere
+   ============================================================ */
+ytd-rich-section-renderer, ytd-reel-shelf-renderer, [is-shorts],
+ytd-rich-shelf-renderer[is-shorts],
+ytd-mini-guide-entry-renderer[aria-label="Shorts"],
+ytd-guide-entry-renderer:has(a[title="Shorts"]),
+ytd-reel-shelf-renderer.ytd-item-section-renderer,
+ytd-search ytd-reel-shelf-renderer,
+ytd-search ytd-video-renderer:has([overlay-style="SHORTS"]),
+ytd-search ytd-video-renderer:has(a[href*="/shorts/"]),
+ytd-search ytd-video-renderer:has(ytd-thumbnail-overlay-time-status-renderer[overlay-style="SHORTS"]),
+grid-shelf-view-model, ytm-shorts-lockup-view-model, ytm-shorts-lockup-view-model-v2,
+.ytGridShelfViewModelHost, .shortsLockupViewModelHost, ytd-search grid-shelf-view-model,
+a[href*="/shorts/"],
+ytd-grid-video-renderer:has(a[href*="/shorts/"]),
+ytd-video-renderer:has(a[href*="/shorts/"]),
+ytd-compact-video-renderer:has(a[href*="/shorts/"]),
+yt-tab-shape[tab-title="Shorts"],
+ytd-horizontal-card-list-renderer,
+ytd-post-renderer, ytd-backstage-post-thread-renderer,
+ytd-rich-shelf-renderer,
+ytd-reel-shelf-renderer.ytd-watch-next-secondary-results-renderer,
+ytd-compact-video-renderer[is-shorts],
+ytd-movie-offering-module-renderer, ytd-compact-movie-renderer,
+ytd-merch-shelf-renderer, ytd-ticket-shelf-renderer,
+ytd-search-filter-renderer:has(a[href*="EgIQCQ"]),
+ytd-search-filter-group-renderer ytd-search-filter-renderer:has(a[href*="/shorts/"]) { display: none !important; }
+
+/* ============================================================
+   7. SEARCH PAGE -- CLEAN GRID
+   ============================================================ */
+ytd-search #page-manager, ytd-search ytd-two-column-search-results-renderer,
+ytd-search ytd-section-list-renderer {
+    max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important;
+}
+ytd-search ytd-section-list-renderer #contents { max-width: 100% !important; padding: 8px !important; }
+ytd-search ytd-item-section-renderer #contents {
+    display: grid !important; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+    gap: 12px !important; max-width: 100% !important; align-items: start !important;
+}
+ytd-search ytd-video-renderer {
+    display: flex !important; flex-direction: column !important;
+    width: 100% !important; max-width: 100% !important; min-width: 0 !important;
+    padding: 0 !important; margin: 0 !important; background: var(--nvim-bg) !important; overflow: hidden !important;
+}
+ytd-search ytd-video-renderer #dismissible { display: flex !important; flex-direction: column !important; width: 100% !important; }
+ytd-search ytd-video-renderer ytd-thumbnail { width: 100% !important; max-width: 100% !important; min-width: 0 !important; margin: 0 !important; flex-shrink: 0 !important; }
+ytd-search ytd-video-renderer ytd-thumbnail #thumbnail { width: 100% !important; max-width: 100% !important; }
+ytd-search ytd-video-renderer ytd-thumbnail img { width: 100% !important; height: auto !important; aspect-ratio: 16/9 !important; object-fit: cover !important; }
+ytd-search ytd-video-renderer .text-wrapper,
+ytd-search ytd-video-renderer .text-wrapper.ytd-video-renderer {
+    display: flex !important; flex-direction: column !important; width: 100% !important;
+    max-width: 100% !important; min-width: 0 !important; padding: 6px 4px !important;
+    box-sizing: border-box !important; margin: 0 !important;
+}
+ytd-search ytd-video-renderer #channel-thumbnail,
+ytd-search ytd-video-renderer #avatar-link,
+ytd-search ytd-video-renderer .channel-thumbnail-icon { display: none !important; }
+ytd-search ytd-secondary-search-container-renderer,
+ytd-search #secondary.ytd-two-column-search-results-renderer { display: none !important; }
+
+ytd-search ytd-video-renderer #video-title,
+ytd-search ytd-video-renderer h3.title-and-badge,
+ytd-search ytd-video-renderer a#video-title,
+ytd-search ytd-video-renderer .title-and-badge {
+    font-size: 12px !important; font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    color: var(--nvim-fg) !important; display: -webkit-box !important; -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important; overflow: hidden !important; line-height: 1.4 !important;
+    max-height: 2.8em !important; margin: 0 0 4px 0 !important; white-space: normal !important;
+}
+ytd-search ytd-video-renderer ytd-channel-name,
+ytd-search ytd-video-renderer #channel-name {
+    font-size: 10px !important; font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    color: var(--nvim-fg-dim) !important; margin-bottom: 2px !important;
+}
+ytd-search ytd-video-renderer #metadata-line,
+ytd-search ytd-video-renderer #metadata-line span,
+ytd-search ytd-video-renderer .inline-metadata-item {
+    font-size: 10px !important; font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    color: var(--nvim-fg-dark) !important;
+}
+ytd-search ytd-video-renderer .metadata-snippet-container,
+ytd-search ytd-video-renderer .metadata-snippet-text,
+ytd-search ytd-video-renderer yt-formatted-string.metadata-snippet-text {
+    display: block !important; -webkit-line-clamp: unset !important; -webkit-box-orient: unset !important;
+    overflow: visible !important; font-size: 10px !important;
+    font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    color: var(--nvim-fg-dark) !important; line-height: 1.4 !important; max-height: none !important; margin-top: 4px !important;
+}
+ytd-search ytd-promoted-sparkles-web-renderer, ytd-search ytd-shelf-renderer,
+ytd-search ytd-horizontal-card-list-renderer, ytd-search ytd-search-refinement-card-renderer,
+ytd-search ytd-card-list-renderer, ytd-search ytd-reel-shelf-renderer,
+ytd-search ytd-ad-slot-renderer, ytd-search ytd-promoted-video-renderer { display: none !important; }
+
+ytd-search ytd-video-renderer:hover { outline: 1px solid var(--nvim-accent) !important; outline-offset: -1px; }
+ytd-search ytd-video-renderer.nvim-selected { outline: 2px solid var(--nvim-green) !important; outline-offset: -2px; background: var(--nvim-cursor-line) !important; }
+
+/* ============================================================
+   8. WATCH PAGE -- WIDE PLAYER, PANELS HIDDEN BY DEFAULT
+   ============================================================ */
+ytd-watch-flexy {
+    --ytd-watch-flexy-panel-max-width: 100% !important;
+    --ytd-watch-flexy-chat-max-width: 0px !important;
+    max-width: 100% !important; max-height: calc(100vh - 26px) !important; padding: 0 !important;
+}
+ytd-watch-flexy #columns.ytd-watch-flexy { max-width: 100% !important; padding: 0 !important; }
+ytd-watch-flexy #primary.ytd-watch-flexy,
+ytd-watch-flexy #primary-inner.ytd-watch-flexy { max-width: 100% !important; width: 100% !important; padding: 0 !important; }
+ytd-watch-flexy #player-container-outer,
+ytd-watch-flexy #player-container-inner,
+ytd-watch-flexy #player-container { max-width: 100% !important; width: 100% !important; }
+ytd-watch-flexy #player-theater-container,
+ytd-watch-flexy #full-bleed-container { max-width: 100% !important; width: 100% !important; max-height: calc(100vh - 26px) !important; }
+ytd-watch-flexy #player-wide-container,
+ytd-watch-flexy #player { max-width: 100% !important; width: 100% !important; }
+
+/* DO NOT touch video.html5-main-video, .html5-video-container, or .html5-video-player.
+   YouTube handles aspect ratio internally. Overriding causes blur/scaling artifacts.
+   We only cap #movie_player max-height so controls stay above the status bar. */
+#movie_player { max-height: calc(100vh - 26px) !important; }
+
+ytd-watch-flexy #primary, ytd-watch-flexy #primary-inner { max-width: 100% !important; width: 100% !important; padding: 0 !important; }
+ytd-watch-flexy #columns { max-width: 100% !important; padding: 0 !important; }
+ytd-watch-flexy #below { padding: 0 !important; margin: 0 !important; max-width: 100% !important; height: 0 !important; overflow: hidden !important; }
+
+/* When any panel is open, let #below have height again */
+body.nvim-panel-comments ytd-watch-flexy #below,
+body.nvim-panel-recs ytd-watch-flexy #below,
+body.nvim-panel-info ytd-watch-flexy #below,
+body.nvim-panel-desc ytd-watch-flexy #below {
+    height: auto !important; overflow: visible !important;
+}
+
+/* ── DEFAULT: hide all watch-page panels off-screen ────────── */
+/* We use visibility:hidden + position:absolute instead of display:none
+   so YouTube still loads/renders the content (comments, recs, etc).
+   display:none would prevent YouTube from fetching comments at all. */
+
+ytd-watch-flexy #comments,
+ytd-watch-flexy ytd-comments#comments {
+    position: fixed !important;
+    left: -200vw !important;
+    top: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+ytd-watch-flexy #secondary,
+ytd-watch-flexy #secondary-inner,
+ytd-watch-flexy ytd-watch-next-secondary-results-renderer {
+    position: absolute !important;
+    width: 1px !important; height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    clip-path: inset(50%) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+ytd-watch-flexy #above-the-fold,
+ytd-watch-flexy ytd-watch-metadata,
+ytd-watch-flexy #top-row,
+ytd-watch-flexy #bottom-row {
+    display: none !important;
+}
+
+ytd-watch-flexy #description,
+ytd-watch-flexy ytd-watch-metadata #description,
+ytd-watch-flexy #description-inner,
+ytd-watch-flexy ytd-text-inline-expander,
+ytd-watch-flexy #snippet,
+ytd-watch-flexy #plain-snippet-text {
+    display: none !important;
+}
+
+/* ============================================================
+   8b. PANEL OVERLAYS -- activated by body classes
+   JS only toggles body.nvim-panel-X classes. No DOM moves.
+   ============================================================ */
+
+/* ── Shared backdrop for all panels ── */
+body.nvim-panel-comments::after,
+body.nvim-panel-recs::after,
+body.nvim-panel-info::after,
+body.nvim-panel-desc::after,
+body.nvim-panel-chat::after {
+    content: "" !important;
+    position: fixed !important;
+    top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    z-index: 89999 !important;
+    pointer-events: auto !important;
+}
+
+/* ── Shared overlay panel style ── */
+/* Comments panel */
+body.nvim-panel-comments ytd-watch-flexy #comments,
+body.nvim-panel-comments ytd-watch-flexy ytd-comments#comments {
+    position: fixed !important;
+    top: 50% !important; left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 65vw !important; max-width: 900px !important;
+    height: calc(70vh - 26px) !important; max-height: calc(70vh - 26px) !important;
+    overflow-y: auto !important; overflow-x: hidden !important;
+    background: var(--nvim-bg-float) !important;
+    border: 1px solid var(--nvim-accent) !important;
+    padding: 16px !important;
+    z-index: 90000 !important;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7) !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+
+/* Recommendations panel */
+body.nvim-panel-recs ytd-watch-flexy #secondary,
+body.nvim-panel-recs ytd-watch-flexy #secondary-inner,
+body.nvim-panel-recs ytd-watch-flexy ytd-watch-next-secondary-results-renderer {
+    position: static !important;
+    width: auto !important; height: auto !important;
+    overflow: visible !important;
+    clip: auto !important;
+    clip-path: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    left: auto !important; top: auto !important;
+}
+
+body.nvim-panel-recs ytd-watch-flexy #secondary {
+    position: fixed !important;
+    top: 50% !important; left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 65vw !important; max-width: 900px !important;
+    height: calc(70vh - 26px) !important; max-height: calc(70vh - 26px) !important;
+    overflow-y: auto !important; overflow-x: hidden !important;
+    background: var(--nvim-bg-float) !important;
+    border: 1px solid var(--nvim-cyan) !important;
+    padding: 16px !important;
+    z-index: 90000 !important;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7) !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+
+body.nvim-panel-recs ytd-watch-flexy #secondary-inner {
+    max-width: 100% !important; width: 100% !important;
+}
+
+/* Info panel (title, channel, likes) */
+body.nvim-panel-info ytd-watch-flexy #above-the-fold,
+body.nvim-panel-info ytd-watch-flexy ytd-watch-metadata,
+body.nvim-panel-info ytd-watch-flexy #top-row,
+body.nvim-panel-info ytd-watch-flexy #bottom-row {
+    display: block !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    position: static !important;
+    left: auto !important; top: auto !important;
+}
+
+body.nvim-panel-info ytd-watch-flexy #above-the-fold {
+    position: fixed !important;
+    top: 50% !important; left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 55vw !important; max-width: 750px !important;
+    height: auto !important; max-height: calc(60vh - 26px) !important;
+    overflow-y: auto !important; overflow-x: hidden !important;
+    background: var(--nvim-bg-float) !important;
+    border: 1px solid var(--nvim-yellow) !important;
+    padding: 16px !important;
+    z-index: 90000 !important;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7) !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: wrap !important;
+}
+
+body.nvim-panel-info ytd-watch-flexy #top-row,
+body.nvim-panel-info ytd-watch-flexy #bottom-row {
+    display: flex !important; flex-wrap: wrap !important;
+}
+
+/* Description panel */
+body.nvim-panel-desc ytd-watch-flexy #above-the-fold,
+body.nvim-panel-desc ytd-watch-flexy ytd-watch-metadata,
+body.nvim-panel-desc ytd-watch-flexy #description,
+body.nvim-panel-desc ytd-watch-flexy ytd-watch-metadata #description,
+body.nvim-panel-desc ytd-watch-flexy #description-inner,
+body.nvim-panel-desc ytd-watch-flexy ytd-text-inline-expander,
+body.nvim-panel-desc ytd-watch-flexy #snippet,
+body.nvim-panel-desc ytd-watch-flexy #plain-snippet-text,
+body.nvim-panel-desc ytd-watch-flexy ytd-structured-description-content-renderer,
+body.nvim-panel-desc ytd-watch-flexy #attributed-snippet-text,
+body.nvim-panel-desc ytd-watch-flexy ytd-text-inline-expander #content,
+body.nvim-panel-desc ytd-watch-flexy ytd-text-inline-expander .content {
+    display: block !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    position: static !important;
+    left: auto !important; top: auto !important;
+}
+
+body.nvim-panel-desc ytd-watch-flexy #above-the-fold {
+    position: fixed !important;
+    top: 50% !important; left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 55vw !important; max-width: 750px !important;
+    height: calc(60vh - 26px) !important; max-height: calc(60vh - 26px) !important;
+    overflow-y: auto !important; overflow-x: hidden !important;
+    background: var(--nvim-bg-float) !important;
+    border: 1px solid var(--nvim-green) !important;
+    padding: 16px !important;
+    z-index: 90000 !important;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7) !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    font-size: 12px !important; color: var(--nvim-fg) !important;
+}
+
+/* For desc panel, hide the top-row; show bottom-row but hide non-description children */
+body.nvim-panel-desc ytd-watch-flexy #top-row { display: none !important; }
+body.nvim-panel-desc ytd-watch-flexy #bottom-row { display: block !important; }
+body.nvim-panel-desc ytd-watch-flexy #bottom-row > *:not(#description) { display: none !important; }
+
+/* Stats bar injected by JS at top of desc overlay */
+#nvim-desc-stats {
+    display: flex !important;
+    gap: 16px !important;
+    padding: 8px 0 12px 0 !important;
+    margin-bottom: 8px !important;
+    border-bottom: 1px solid var(--nvim-border) !important;
+    font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    font-size: 12px !important;
+    color: var(--nvim-fg-dim) !important;
+    flex-wrap: wrap !important;
+}
+#nvim-desc-stats .nvim-stat-value {
+    color: var(--nvim-fg) !important;
+    font-weight: bold !important;
+}
+#nvim-desc-stats .nvim-stat-likes { color: var(--nvim-green) !important; }
+#nvim-desc-stats .nvim-stat-dislikes { color: var(--nvim-red) !important; }
+#nvim-desc-stats .nvim-stat-views { color: var(--nvim-cyan) !important; }
+#nvim-desc-stats .nvim-stat-date { color: var(--nvim-yellow) !important; }
+
+/* Force ALL description content to be fully expanded and visible */
+body.nvim-panel-desc ytd-watch-flexy ytd-text-inline-expander,
+body.nvim-panel-desc ytd-watch-flexy ytd-structured-description-content-renderer,
+body.nvim-panel-desc ytd-watch-flexy #description-inner,
+body.nvim-panel-desc ytd-watch-flexy #description {
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+    height: auto !important;
+}
+
+/* Hide the collapsed snippet, show the full text */
+body.nvim-panel-desc ytd-watch-flexy #snippet,
+body.nvim-panel-desc ytd-watch-flexy #attributed-snippet-text {
+    display: none !important;
+}
+
+/* Show the expanded content */
+body.nvim-panel-desc ytd-watch-flexy #plain-snippet-text,
+body.nvim-panel-desc ytd-watch-flexy ytd-text-inline-expander #content,
+body.nvim-panel-desc ytd-watch-flexy ytd-text-inline-expander .content,
+body.nvim-panel-desc ytd-watch-flexy ytd-structured-description-content-renderer > *,
+body.nvim-panel-desc ytd-watch-flexy ytd-attributed-string[force-default-style],
+body.nvim-panel-desc ytd-watch-flexy yt-attributed-string,
+body.nvim-panel-desc ytd-watch-flexy yt-formatted-string {
+    display: block !important;
+    max-height: none !important;
+    overflow: visible !important;
+    -webkit-line-clamp: unset !important;
+    -webkit-box-orient: unset !important;
+    visibility: visible !important;
+}
+
+/* Hide the "Show more" / "Show less" buttons inside desc overlay */
+body.nvim-panel-desc ytd-watch-flexy #expand,
+body.nvim-panel-desc ytd-watch-flexy #collapse,
+body.nvim-panel-desc ytd-watch-flexy tp-yt-paper-button#expand,
+body.nvim-panel-desc ytd-watch-flexy tp-yt-paper-button#collapse,
+body.nvim-panel-desc ytd-watch-flexy [slot="expand-button"],
+body.nvim-panel-desc ytd-watch-flexy [slot="collapse-button"] {
+    display: none !important;
+}
+
+/* ── Panel title bars (CSS ::before on the overlay container) ── */
+body.nvim-panel-comments ytd-watch-flexy #comments::before {
+    content: " COMMENTS  [Ctrl+j/k scroll] [Esc close]" !important;
+    display: block !important;
+    font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    font-size: 11px !important; color: var(--nvim-accent) !important;
+    padding: 4px 0 10px 0 !important;
+    border-bottom: 1px solid var(--nvim-border) !important;
+    margin-bottom: 8px !important;
+}
+
+body.nvim-panel-recs ytd-watch-flexy #secondary::before {
+    content: " RECOMMENDATIONS  [Ctrl+j/k scroll] [Esc close]" !important;
+    display: block !important;
+    font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    font-size: 11px !important; color: var(--nvim-cyan) !important;
+    padding: 4px 0 10px 0 !important;
+    border-bottom: 1px solid var(--nvim-border) !important;
+    margin-bottom: 8px !important;
+}
+
+body.nvim-panel-info ytd-watch-flexy #above-the-fold::before {
+    content: " INFO  [Ctrl+j/k scroll] [Esc close]" !important;
+    display: block !important;
+    font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    font-size: 11px !important; color: var(--nvim-yellow) !important;
+    padding: 4px 0 10px 0 !important;
+    border-bottom: 1px solid var(--nvim-border) !important;
+    margin-bottom: 8px !important; width: 100% !important;
+}
+
+body.nvim-panel-desc ytd-watch-flexy #above-the-fold::before {
+    content: " DESCRIPTION  [Ctrl+j/k scroll] [Esc close]" !important;
+    display: block !important;
+    font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    font-size: 11px !important; color: var(--nvim-green) !important;
+    padding: 4px 0 10px 0 !important;
+    border-bottom: 1px solid var(--nvim-border) !important;
+    margin-bottom: 8px !important; width: 100% !important;
+}
+
+/* ── Live Chat panel ── */
+ytd-watch-flexy ytd-live-chat-frame#chat {
+    position: fixed !important;
+    left: -200vw !important;
+    top: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+body.nvim-panel-chat ytd-watch-flexy ytd-live-chat-frame#chat {
+    position: fixed !important;
+    top: 50% !important; left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 55vw !important; max-width: 800px !important;
+    height: calc(70vh - 26px) !important; max-height: calc(70vh - 26px) !important;
+    overflow: hidden !important;
+    background: var(--nvim-bg-float) !important;
+    border: 1px solid var(--nvim-magenta) !important;
+    padding: 0 !important;
+    z-index: 90000 !important;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7) !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+}
+
+body.nvim-panel-chat ytd-watch-flexy ytd-live-chat-frame#chat iframe {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+body.nvim-panel-chat ytd-watch-flexy ytd-live-chat-frame#chat::before {
+    content: " LIVE CHAT  [Esc close]" !important;
+    display: block !important;
+    font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    font-size: 11px !important; color: var(--nvim-magenta) !important;
+    padding: 4px 8px 4px 8px !important;
+    border-bottom: 1px solid var(--nvim-border) !important;
+    background: var(--nvim-bg-dark) !important;
+}
+
+/* ── Ask (YouChat) panel — removed, work in progress ── */
+
+/* ============================================================
+   9. VIM STATUS BAR
+   ============================================================ */
+body::after {
+    content: "-- NORMAL --  ,c comm | ,e recs | ,q desc | ,i info | ,l chat | ,, search | \\ back | H home";
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 24px; line-height: 24px;
+    background: var(--nvim-statusbar); color: var(--nvim-statusfg);
+    font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+    font-size: 12px; padding: 0 12px; z-index: 99999;
+    border-top: 1px solid var(--nvim-border); pointer-events: none;
+}
+
+/* Hide CSS status bar when JS is active */
+body.nvim-js-active::after { display: none !important; }
+
+/* Line numbers */
+ytd-rich-item-renderer::before {
+    content: counter(video-counter); counter-increment: video-counter;
+    position: absolute; left: 2px; top: 2px;
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    font-size: 9px; color: var(--nvim-line-nr); z-index: 10; opacity: 0.6;
+}
+ytd-rich-grid-renderer { counter-reset: video-counter; }
+ytd-rich-item-renderer { position: relative; }
+
+/* ============================================================
+   10. SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar { width: 6px !important; height: 6px !important; }
+::-webkit-scrollbar-track { background: var(--nvim-bg-dark) !important; }
+::-webkit-scrollbar-thumb { background: var(--nvim-fg-dark) !important; }
+::-webkit-scrollbar-thumb:hover { background: var(--nvim-fg-dim) !important; }
+
+/* ============================================================
+   11. MISC CLEANUP
+   ============================================================ */
+ytd-notification-topbar-button-renderer, #voice-search-button,
+ytd-topbar-menu-button-renderer[button-renderer="yt-button-shape"] { display: none !important; }
+#guide-section-title, ytd-guide-section-renderer:not(:first-child) { display: none !important; }
+
+tp-yt-paper-dialog, ytd-popup-container, ytd-menu-popup-renderer, tp-yt-paper-listbox {
+    background: var(--nvim-bg-float) !important; color: var(--nvim-fg) !important;
+    border: 1px solid var(--nvim-border) !important;
+}
+
+a, a:visited { color: var(--nvim-fg) !important; }
+a:hover { color: var(--nvim-accent) !important; }
+
+yt-button-shape button, ytd-button-renderer, tp-yt-paper-button {
+    background: var(--nvim-bg-sel) !important; color: var(--nvim-fg) !important;
+    border: 1px solid var(--nvim-border) !important;
+    font-family: "JetBrains Mono", "Fira Code", monospace !important;
+}
+#subscribe-button ytd-subscribe-button-renderer button,
+#subscribe-button tp-yt-paper-button { background: var(--nvim-accent) !important; color: var(--nvim-bg) !important; }
+
+ytd-rich-item-renderer:hover { outline: 1px solid var(--nvim-accent) !important; outline-offset: -1px; }
+ytd-rich-item-renderer.nvim-selected { outline: 2px solid var(--nvim-green) !important; outline-offset: -2px; background: var(--nvim-cursor-line) !important; }
+
+body { padding-bottom: 28px !important; background: var(--nvim-bg) !important; }
+
+/* ============================================================
+   12. SEARCH OVERLAY
+   ============================================================ */
+#nvim-search-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.85); z-index: 100000;
+    display: none; align-items: flex-start; justify-content: center; padding-top: 30vh;
+}
+#nvim-search-overlay.active { display: flex !important; }
+#nvim-search-overlay input {
+    width: 60%; max-width: 700px; background: var(--nvim-bg-float);
+    border: 1px solid var(--nvim-accent); border-bottom: 2px solid var(--nvim-accent);
+    color: var(--nvim-fg); font-family: "JetBrains Mono", "Fira Code", monospace;
+    font-size: 18px; padding: 12px 16px; outline: none;
+}
+#nvim-search-overlay input::placeholder { color: var(--nvim-fg-dark); }
+
+/* ============================================================
+   13. CHANNEL PAGES
+   ============================================================ */
+ytd-browse[page-subtype="channels"] { background: var(--nvim-bg) !important; }
+ytd-c4-tabbed-header-renderer, ytd-tabbed-page-header { background: var(--nvim-bg-dark) !important; }
+ytd-c4-tabbed-header-renderer .banner-visible-area,
+ytd-tabbed-page-header #page-header-banner,
+yt-page-header-view-model .yt-page-header-view-model__page-header-background {
+    opacity: 0.5 !important; max-height: 120px !important; overflow: hidden !important;
+}
+ytd-c4-tabbed-header-renderer, ytd-tabbed-page-header #channel-header,
+#page-header-container.ytd-tabbed-page-header {
+    --yt-lightsource-section1-color: var(--nvim-bg-dark) !important;
+    --yt-lightsource-section2-color: var(--nvim-bg-dark) !important;
+    --yt-lightsource-section3-color: var(--nvim-bg-dark) !important;
+    background: var(--nvim-bg-dark) !important;
+}
+yt-dynamic-text-view-model h1, yt-dynamic-text-view-model .dynamicTextViewModelH1,
+#channel-title.ytd-c4-tabbed-header-renderer {
+    font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    color: var(--nvim-fg) !important; font-size: 16px !important;
+}
+
+/* Restore channel avatar/icon on channel pages */
+ytd-browse[page-subtype="channels"] yt-avatar-shape,
+ytd-browse[page-subtype="channels"] yt-img-shadow.ytd-c4-tabbed-header-renderer,
+ytd-browse[page-subtype="channels"] #avatar-container,
+ytd-browse[page-subtype="channels"] #channel-header-container #avatar,
+ytd-browse[page-subtype="channels"] .yt-page-header-view-model__page-header-avatar,
+ytd-browse[page-subtype="channels"] yt-decorated-avatar-view-model,
+ytd-browse[page-subtype="channels"] .page-header-view-model-wiz__page-header-avatar {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 72px !important; height: 72px !important;
+    border: 2px solid var(--nvim-border) !important;
+    margin-right: 12px !important;
+}
+ytd-browse[page-subtype="channels"] yt-avatar-shape img,
+ytd-browse[page-subtype="channels"] yt-img-shadow.ytd-c4-tabbed-header-renderer img {
+    width: 100% !important; height: 100% !important;
+    object-fit: cover !important;
+}
+.yt-page-header-view-model__page-header-content-metadata,
+.yt-content-metadata-view-model__metadata-text,
+#subscriber-count.ytd-c4-tabbed-header-renderer {
+    font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    color: var(--nvim-fg-dim) !important; font-size: 11px !important;
+}
+yt-tab-group-shape, #tabsContent, tp-yt-paper-tabs.ytd-tabbed-page-header,
+tp-yt-app-toolbar.ytd-tabbed-page-header, tp-yt-app-toolbar.ytd-c4-tabbed-header-renderer {
+    background: var(--nvim-bg-dark) !important; border-bottom: 1px solid var(--nvim-border) !important;
+}
+yt-tab-shape .yt-tab-shape__tab, tp-yt-paper-tab.ytd-c4-tabbed-header-renderer,
+tp-yt-paper-tab.ytd-tabbed-page-header {
+    font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    font-size: 12px !important; color: var(--nvim-fg-dim) !important;
+    text-transform: uppercase !important; letter-spacing: 0.5px !important; padding: 8px 16px !important;
+}
+yt-tab-shape .yt-tab-shape__tab--tab-selected { color: var(--nvim-accent) !important; }
+yt-tab-shape .yt-tab-shape__tab-bar--tab-bar-selected { background: var(--nvim-accent) !important; }
+yt-tab-shape:hover .yt-tab-shape__tab { color: var(--nvim-fg) !important; }
+yt-tab-shape[tab-title="Shorts"], yt-tab-shape[tab-title="Community"] { display: none !important; }
+
+/* Channel tab number indicators — show which key (1-4) maps to which tab */
+yt-tab-shape[tab-title="Videos"] .yt-tab-shape__tab::before { content: "[1] "; color: var(--nvim-accent); font-size: 10px; }
+yt-tab-shape[tab-title="Playlists"] .yt-tab-shape__tab::before { content: "[2] "; color: var(--nvim-accent); font-size: 10px; }
+yt-tab-shape[tab-title="Live"] .yt-tab-shape__tab::before { content: "[3] "; color: var(--nvim-accent); font-size: 10px; }
+yt-tab-shape[tab-title="Home"] .yt-tab-shape__tab::before { content: "[4] "; color: var(--nvim-accent); font-size: 10px; }
+
+ytd-browse[page-subtype="channels"] ytd-rich-grid-renderer {
+    --ytd-rich-grid-items-per-row: 5 !important; max-width: 100% !important; width: 100% !important; padding: 8px !important;
+}
+ytd-browse[page-subtype="channels"] ytd-rich-item-renderer {
+    width: calc(100% / 5 - 10px) !important; max-width: calc(100% / 5 - 10px) !important;
+    margin: 4px 0 !important; padding: 0 4px 6px 4px !important;
+}
+ytd-browse[page-subtype="channels"] #items.ytd-grid-renderer {
+    display: grid !important; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; gap: 8px !important;
+}
+#title.ytd-vertical-channel-section-renderer {
+    font-family: "JetBrains Mono", "Fira Code", monospace !important;
+    font-size: 13px !important; color: var(--nvim-accent) !important;
+}
+
+} /* end @-moz-document */
