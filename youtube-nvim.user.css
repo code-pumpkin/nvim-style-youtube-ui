@@ -1,3 +1,15 @@
+/* ==UserStyle==
+@name         YouTube NeoVim v4
+@namespace    github.com/code-pumpkin/nvim-style-youtube-ui
+@version      4.0.0
+@description  NeoVim-inspired YouTube UI with Ayu Dark theme, Vim-style keybindings, and overlay panels.
+@author       codePumpkin
+@license      MIT
+@homepageURL  https://github.com/code-pumpkin/nvim-style-youtube-ui
+@supportURL   https://github.com/code-pumpkin/nvim-style-youtube-ui/issues
+@updateURL    https://raw.githubusercontent.com/code-pumpkin/nvim-style-youtube-ui/main/youtube-nvim.user.css
+==/UserStyle==
+
 @-moz-document domain("www.youtube.com") {
 
 /* ============================================================
