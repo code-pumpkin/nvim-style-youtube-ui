@@ -44,7 +44,7 @@
 
     const panelScrollTargets = {
         comments: "#comments",
-        recs:     "#secondary",
+        recs:     "ytd-watch-flexy #secondary",
         info:     "#above-the-fold",
         desc:     "#above-the-fold",
         chat:     "ytd-live-chat-frame#chat",
@@ -341,6 +341,7 @@
                 if (q) location.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
                 closeSearch();
             } else if (e.key === "Escape") {
+                e.preventDefault();
                 closeSearch();
             } else if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
                 e.preventDefault();
@@ -626,9 +627,19 @@
     function handleKeydown(e) {
         // Never intercept when typing in inputs
         if (isTyping() && state.mode !== "SEARCH") return;
-        if (state.mode === "SEARCH") return; // search input handles its own keys
-
+        
         const key = e.key;
+        
+        // In SEARCH mode: allow comma to close if search input is not focused
+        if (state.mode === "SEARCH") {
+            if (key === "," && document.activeElement !== searchInput) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                closeSearch();
+                return;
+            }
+            return; // search input handles its own keys
+        }
 
         // Watch page: block j/l/k/h FIRST — YouTube's defaults cause layout shifts
         if (isWatchPage() && !e.ctrlKey && !e.altKey && !e.metaKey &&
