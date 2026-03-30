@@ -299,6 +299,14 @@ ytd-watch-flexy #primary, ytd-watch-flexy #primary-inner { max-width: 100% !impo
 ytd-watch-flexy #columns { max-width: 100% !important; padding: 0 !important; }
 ytd-watch-flexy #below { padding: 0 !important; margin: 0 !important; max-width: 100% !important; height: 0 !important; overflow: hidden !important; }
 
+/* Ensure player containers inside #below are never clipped */
+ytd-watch-flexy #below #player-container-outer,
+ytd-watch-flexy #below #player-container-inner,
+ytd-watch-flexy #below #player-container,
+ytd-watch-flexy #below #player-theater-container,
+ytd-watch-flexy #below #full-bleed-container,
+ytd-watch-flexy #below #player { height: auto !important; overflow: visible !important; }
+
 /* When any panel is open, let #below have height again */
 body.nvim-panel-comments ytd-watch-flexy #below,
 body.nvim-panel-recs ytd-watch-flexy #below,
