@@ -708,7 +708,7 @@ yt-button-shape button, ytd-button-renderer, tp-yt-paper-button {
 ytd-rich-item-renderer:hover { outline: 1px solid var(--nvim-accent) !important; outline-offset: -1px; }
 ytd-rich-item-renderer.nvim-selected { outline: 2px solid var(--nvim-green) !important; outline-offset: -2px; background: var(--nvim-cursor-line) !important; }
 
-body { padding-bottom: 72px !important; background: var(--nvim-bg) !important; } /* 26px statusbar + 44px touchbar + 2px gap */
+body { padding-bottom: 28px !important; background: var(--nvim-bg) !important; }
 
 /* ============================================================
    12. SEARCH OVERLAY
