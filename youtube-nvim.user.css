@@ -277,23 +277,35 @@ ytd-search ytd-video-renderer.nvim-selected { outline: 2px solid var(--nvim-gree
 ytd-watch-flexy {
     --ytd-watch-flexy-panel-max-width: 100% !important;
     --ytd-watch-flexy-chat-max-width: 0px !important;
-    max-width: 100% !important; max-height: calc(100vh - 26px) !important; padding: 0 !important;
+    max-width: 100% !important; max-height: calc(100vh - 70px) !important; padding: 0 !important;
 }
 ytd-watch-flexy #columns.ytd-watch-flexy { max-width: 100% !important; padding: 0 !important; }
 ytd-watch-flexy #primary.ytd-watch-flexy,
 ytd-watch-flexy #primary-inner.ytd-watch-flexy { max-width: 100% !important; width: 100% !important; padding: 0 !important; }
 ytd-watch-flexy #player-container-outer,
 ytd-watch-flexy #player-container-inner,
-ytd-watch-flexy #player-container { max-width: 100% !important; width: 100% !important; }
+ytd-watch-flexy #player-container { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
 ytd-watch-flexy #player-theater-container,
-ytd-watch-flexy #full-bleed-container { max-width: 100% !important; width: 100% !important; max-height: calc(100vh - 26px) !important; }
+ytd-watch-flexy #full-bleed-container { max-width: 100% !important; width: 100% !important; max-height: calc(100vh - 70px) !important; }
 ytd-watch-flexy #player-wide-container,
 ytd-watch-flexy #player { max-width: 100% !important; width: 100% !important; }
 
 /* DO NOT touch video.html5-main-video, .html5-video-container, or .html5-video-player.
    YouTube handles aspect ratio internally. Overriding causes blur/scaling artifacts.
-   We only cap #movie_player max-height so controls stay above the status bar. */
-#movie_player { max-height: calc(100vh - 26px) !important; }
+   We only cap #movie_player max-height so controls stay above the status bar + touch bar. */
+#movie_player {
+    max-height: calc(100vh - 70px) !important; /* 26px statusbar + 44px touchbar */
+    aspect-ratio: 16/9 !important;
+    width: 100% !important;
+}
+
+/* Prevent YouTube from adding extra padding/margin when j/k are pressed */
+ytd-watch-flexy #player-container-outer,
+ytd-watch-flexy #player-container-inner,
+ytd-watch-flexy #player-container {
+    padding: 0 !important;
+    margin: 0 !important;
+}
 
 ytd-watch-flexy #primary, ytd-watch-flexy #primary-inner { max-width: 100% !important; width: 100% !important; padding: 0 !important; }
 ytd-watch-flexy #columns { max-width: 100% !important; padding: 0 !important; }
@@ -708,7 +720,7 @@ yt-button-shape button, ytd-button-renderer, tp-yt-paper-button {
 ytd-rich-item-renderer:hover { outline: 1px solid var(--nvim-accent) !important; outline-offset: -1px; }
 ytd-rich-item-renderer.nvim-selected { outline: 2px solid var(--nvim-green) !important; outline-offset: -2px; background: var(--nvim-cursor-line) !important; }
 
-body { padding-bottom: 28px !important; background: var(--nvim-bg) !important; }
+body { padding-bottom: 72px !important; background: var(--nvim-bg) !important; } /* 26px statusbar + 44px touchbar + 2px gap */
 
 /* ============================================================
    12. SEARCH OVERLAY
@@ -811,5 +823,37 @@ ytd-browse[page-subtype="channels"] #items.ytd-grid-renderer {
     font-family: "JetBrains Mono", "Fira Code", monospace !important;
     font-size: 13px !important; color: var(--nvim-accent) !important;
 }
+
+/* ============================================================
+   14. TOUCH BUTTON BAR
+   ============================================================ */
+#nvim-touchbar {
+    position: fixed;
+    bottom: 26px; left: 0; right: 0;
+    height: 44px;
+    background: var(--nvim-bg-float);
+    border-top: 1px solid var(--nvim-border);
+    display: flex; align-items: center; justify-content: space-around;
+    z-index: 999998;
+    user-select: none;
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    font-size: 11px;
+    -webkit-tap-highlight-color: transparent;
+}
+#nvim-touchbar button {
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--nvim-border);
+    height: 100%;
+    flex: 1;
+    cursor: pointer;
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    font-size: 11px;
+    padding: 0 4px;
+    transition: background 0.15s;
+    touch-action: manipulation;
+}
+#nvim-touchbar button:last-child { border-right: none; }
+#nvim-touchbar button:active { background: var(--nvim-bg-hover) !important; }
 
 } /* end @-moz-document */
