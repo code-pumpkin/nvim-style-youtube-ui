@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         YouTube NeoVim v5
+// @name         YouTube NeoVim v4
 // @namespace    youtube-nvim
-// @version      5.0.3
+// @version      4.0.0
 // @description  Vim-style YouTube. Leader key (,) avoids Tridactyl conflicts. CSS-only overlays, no DOM reparenting.
 // @author       codePumpkin
 // @match        https://www.youtube.com/*
@@ -13,7 +13,7 @@
     "use strict";
 
     const C = {
-        bgDark: "#0b0e14", bgFloat: "#131721", border: "#1d222e", bgHover: "#1a1e29",
+        bgDark: "#0b0e14", bgFloat: "#131721", border: "#1d222e",
         fg: "#bfbdb6", fgDim: "#565b66", fgDark: "#484d58",
         accent: "#e6b450", green: "#7fd962", red: "#d95757",
         yellow: "#ffb454", cyan: "#73b8ff", magenta: "#d2a6ff",
@@ -216,9 +216,12 @@
             setTimeout(() => {
                 const secondary = document.querySelector("ytd-watch-flexy #secondary");
                 if (secondary) {
+                    // Trigger a resize event so YouTube's IntersectionObserver re-evaluates
                     window.dispatchEvent(new Event("resize"));
+                    // Also try to poke the continuation renderer to load fresh data
                     const contItems = secondary.querySelector("ytd-watch-next-secondary-results-renderer #items");
                     if (contItems && contItems.children.length === 0) {
+                        // If empty, scroll the secondary into view briefly to trigger lazy load
                         secondary.scrollIntoView({ block: "nearest" });
                     }
                 }
@@ -228,20 +231,29 @@
         // For desc panel, inject stats and force expand the description
         if (panel === "desc") {
             injectDescStats();
+            // The panel is now visible via CSS class. Wait a tick, then expand.
             setTimeout(() => {
+                // Try setting the attribute first
                 const expander = document.querySelector("ytd-text-inline-expander");
                 if (expander) {
                     expander.setAttribute("is-expanded", "");
                     expander.setAttribute("can-toggle", "");
                 }
+                // Then try clicking the expand button (now visible in the overlay)
                 const btn = document.querySelector("#expand, tp-yt-paper-button#expand, [slot='expand-button']");
                 if (btn) try { btn.click(); } catch (_) {}
+
+                // Also try the structured-description expand
                 const descExpand = document.querySelector("ytd-structured-description-content-renderer #expand");
                 if (descExpand) try { descExpand.click(); } catch (_) {}
+
+                // Force the truncated snippet to show full text
                 const snippet = document.querySelector("ytd-text-inline-expander #snippet");
                 const plain = document.querySelector("ytd-text-inline-expander #plain-snippet-text");
                 if (snippet) snippet.style.cssText = "display:none!important";
                 if (plain) plain.style.cssText = "display:block!important;max-height:none!important;overflow:visible!important;-webkit-line-clamp:unset!important";
+
+                // Fallback: find the attributed string with full text
                 const allStrings = document.querySelectorAll("ytd-text-inline-expander yt-attributed-string, ytd-text-inline-expander yt-formatted-string");
                 allStrings.forEach(s => {
                     s.style.cssText = "display:block!important;max-height:none!important;overflow:visible!important;-webkit-line-clamp:unset!important";
@@ -250,7 +262,6 @@
         }
 
         updateStatusBar();
-        updateTouchBar();
     }
 
     // ── Ask (YouChat) panel — removed, work in progress ──
@@ -258,6 +269,7 @@
     function closePanel() {
         if (state.panelOpen) {
             document.body.classList.remove(panelClasses[state.panelOpen]);
+            // Clean up desc stats bar
             if (state.panelOpen === "desc") {
                 const stats = document.getElementById("nvim-desc-stats");
                 if (stats) stats.remove();
@@ -266,7 +278,6 @@
         state.panelOpen = null;
         state.mode = "NORMAL";
         updateStatusBar();
-        updateTouchBar();
     }
 
     function scrollPanel(dir) {
@@ -461,7 +472,6 @@
         searchInput.value = "";
         searchInput.focus();
         updateStatusBar();
-        updateTouchBar();
     }
 
     function closeSearch() {
@@ -472,79 +482,6 @@
         suggestionsBox.style.display = "none";
         clearTimeout(suggestDebounce);
         updateStatusBar();
-        updateTouchBar();
-    }
-
-    // ── Touch button bar ──
-    let touchBar;
-
-    function createTouchBar() {
-        touchBar = document.createElement("div");
-        touchBar.id = "nvim-touchbar";
-        Object.assign(touchBar.style, {
-            position: "fixed", bottom: "26px", left: "0", right: "0",
-            height: "44px", background: C.bgFloat,
-            borderTop: `1px solid ${C.border}`,
-            display: "flex", alignItems: "center", justifyContent: "space-around",
-            zIndex: "999998", userSelect: "none",
-            fontFamily: '"JetBrains Mono",monospace', fontSize: "11px",
-        });
-
-        const buttons = [
-            { label: "≡ INFO",    action: () => isWatchPage() && togglePanel("info"),     color: C.yellow  },
-            { label: "▤ DESC",    action: () => isWatchPage() && togglePanel("desc"),     color: C.green   },
-            { label: "✦ RECS",    action: () => isWatchPage() && togglePanel("recs"),     color: C.cyan    },
-            { label: "💬 COMM",   action: () => isWatchPage() && togglePanel("comments"), color: C.magenta },
-            { label: "⌕ SEARCH",  action: () => openSearch(),                             color: C.accent  },
-            { label: "⌂ HOME",    action: () => navigateHome(),                           color: C.fg      },
-            { label: "← BACK",    action: () => history.back(),                           color: C.fgDim   },
-        ];
-
-        buttons.forEach(({ label, action, color }) => {
-            const btn = document.createElement("button");
-            btn.textContent = label;
-            Object.assign(btn.style, {
-                background: "transparent", border: "none", color,
-                fontFamily: '"JetBrains Mono",monospace', fontSize: "11px",
-                padding: "6px 8px", cursor: "pointer", flex: "1",
-                borderRight: `1px solid ${C.border}`, height: "100%",
-                transition: "background 0.15s",
-            });
-            btn.addEventListener("pointerdown", (e) => {
-                e.preventDefault();
-                btn.style.background = C.bgHover || "#1a1e29";
-            });
-            btn.addEventListener("pointerup", (e) => {
-                e.preventDefault();
-                btn.style.background = "transparent";
-                action();
-            });
-            btn.addEventListener("pointerleave", () => { btn.style.background = "transparent"; });
-            touchBar.appendChild(btn);
-        });
-
-        // Last button has no right border
-        touchBar.lastChild.style.borderRight = "none";
-        document.body.appendChild(touchBar);
-        updateTouchBar();
-    }
-
-    function updateTouchBar() {
-        if (!touchBar) return;
-        // Show/hide watch-page-only buttons based on current page
-        const btns = touchBar.querySelectorAll("button");
-        const onWatch = isWatchPage();
-        // First 4 buttons are watch-only
-        [0, 1, 2, 3].forEach(i => {
-            btns[i].style.opacity = onWatch ? "1" : "0.3";
-            btns[i].style.pointerEvents = onWatch ? "auto" : "none";
-        });
-        // Highlight active panel button
-        const panelMap = { info: 0, desc: 1, recs: 2, comments: 3 };
-        btns.forEach(b => b.style.fontWeight = "normal");
-        if (state.panelOpen && panelMap[state.panelOpen] !== undefined) {
-            btns[panelMap[state.panelOpen]].style.fontWeight = "bold";
-        }
     }
 
     // ── Status bar ──
@@ -687,17 +624,12 @@
     }
 
     // ── Main keydown ──
-    // Keys YouTube hijacks on watch page that cause problems:
-    //   j/k/l/h  → seek/volume → layout shifts + extra padding
-    //   c        → captions toggle → CC mode stuck, video freeze
-    const WATCH_BLOCKED_KEYS = new Set(["j", "k", "l", "h", "c"]);
-
     function handleKeydown(e) {
         // Never intercept when typing in inputs
         if (isTyping() && state.mode !== "SEARCH") return;
-
+        
         const key = e.key;
-
+        
         // In SEARCH mode: allow comma to close if search input is not focused
         if (state.mode === "SEARCH") {
             if (key === "," && document.activeElement !== searchInput) {
@@ -709,8 +641,9 @@
             return; // search input handles its own keys
         }
 
-        // Watch page: block YouTube's problematic default key handlers FIRST
-        if (isWatchPage() && !e.ctrlKey && !e.altKey && !e.metaKey && WATCH_BLOCKED_KEYS.has(key)) {
+        // Watch page: block j/l/k/h FIRST — YouTube's defaults cause layout shifts
+        if (isWatchPage() && !e.ctrlKey && !e.altKey && !e.metaKey &&
+            (key === "j" || key === "l" || key === "k" || key === "h")) {
             e.preventDefault();
             e.stopImmediatePropagation();
             return;
@@ -788,7 +721,6 @@
         if (state.mode === "SEARCH") closeSearch();
         state.mode = "NORMAL";
         updateStatusBar();
-        updateTouchBar();
         // Inject search title if on search page
         setTimeout(injectSearchTitle, 300);
     }
@@ -843,12 +775,12 @@
     function init() {
         createStatusBar();
         createSearchOverlay();
-        createTouchBar();
 
-        // Block problematic YouTube keys on watch page across all key event types
+        // Block jklh on watch page across all key event types
         function blockWatchKeys(e) {
             if (isTyping()) return;
-            if (isWatchPage() && !e.ctrlKey && !e.altKey && !e.metaKey && WATCH_BLOCKED_KEYS.has(e.key)) {
+            if (isWatchPage() && !e.ctrlKey && !e.altKey && !e.metaKey &&
+                (e.key === "j" || e.key === "l" || e.key === "k" || e.key === "h")) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
             }
