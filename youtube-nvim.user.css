@@ -277,7 +277,7 @@ ytd-search ytd-video-renderer.nvim-selected { outline: 2px solid var(--nvim-gree
 ytd-watch-flexy {
     --ytd-watch-flexy-panel-max-width: 100% !important;
     --ytd-watch-flexy-chat-max-width: 0px !important;
-    max-width: 100% !important; max-height: calc(100vh - 70px) !important; padding: 0 !important;
+    max-width: 100% !important; padding: 0 !important;
 }
 ytd-watch-flexy #columns.ytd-watch-flexy { max-width: 100% !important; padding: 0 !important; }
 ytd-watch-flexy #primary.ytd-watch-flexy,
@@ -286,16 +286,11 @@ ytd-watch-flexy #player-container-outer,
 ytd-watch-flexy #player-container-inner,
 ytd-watch-flexy #player-container { max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
 ytd-watch-flexy #player-theater-container,
-ytd-watch-flexy #full-bleed-container { max-width: 100% !important; width: 100% !important; max-height: calc(100vh - 70px) !important; }
+ytd-watch-flexy #full-bleed-container { max-width: 100% !important; width: 100% !important; }
 ytd-watch-flexy #player-wide-container,
 ytd-watch-flexy #player { max-width: 100% !important; width: 100% !important; }
 
-/* DO NOT touch video.html5-main-video, .html5-video-container, .html5-video-player, or aspect-ratio.
-   YouTube manages player dimensions internally — overriding causes the player to disappear or break.
-   Only cap max-height so controls stay above the status bar + touch bar. */
-#movie_player {
-    max-height: calc(100vh - 70px) !important; /* 26px statusbar + 44px touchbar */
-}
+/* DO NOT override #movie_player dimensions — YouTube manages these internally. */
 
 ytd-watch-flexy #primary, ytd-watch-flexy #primary-inner { max-width: 100% !important; width: 100% !important; padding: 0 !important; }
 ytd-watch-flexy #columns { max-width: 100% !important; padding: 0 !important; }
