@@ -290,21 +290,11 @@ ytd-watch-flexy #full-bleed-container { max-width: 100% !important; width: 100% 
 ytd-watch-flexy #player-wide-container,
 ytd-watch-flexy #player { max-width: 100% !important; width: 100% !important; }
 
-/* DO NOT touch video.html5-main-video, .html5-video-container, or .html5-video-player.
-   YouTube handles aspect ratio internally. Overriding causes blur/scaling artifacts.
-   We only cap #movie_player max-height so controls stay above the status bar + touch bar. */
+/* DO NOT touch video.html5-main-video, .html5-video-container, .html5-video-player, or aspect-ratio.
+   YouTube manages player dimensions internally — overriding causes the player to disappear or break.
+   Only cap max-height so controls stay above the status bar + touch bar. */
 #movie_player {
     max-height: calc(100vh - 70px) !important; /* 26px statusbar + 44px touchbar */
-    aspect-ratio: 16/9 !important;
-    width: 100% !important;
-}
-
-/* Prevent YouTube from adding extra padding/margin when j/k are pressed */
-ytd-watch-flexy #player-container-outer,
-ytd-watch-flexy #player-container-inner,
-ytd-watch-flexy #player-container {
-    padding: 0 !important;
-    margin: 0 !important;
 }
 
 ytd-watch-flexy #primary, ytd-watch-flexy #primary-inner { max-width: 100% !important; width: 100% !important; padding: 0 !important; }
