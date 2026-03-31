@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         YouTube NeoVim v5
 // @namespace    youtube-nvim
-// @version      5.0.7
+// @version      5.0.8
 // @description  Vim-style YouTube. Leader key (,) avoids Tridactyl conflicts. CSS-only overlays, no DOM reparenting.
 // @author       codePumpkin
 // @match        https://www.youtube.com/*
