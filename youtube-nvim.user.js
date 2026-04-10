@@ -92,57 +92,62 @@
     // ── Stats injection for details panel ──
     function injectStats() {
         document.getElementById("nvim-stats")?.remove();
-        const bar = document.createElement("div");
-        bar.id = "nvim-stats";
+        document.getElementById("nvim-title-inject")?.remove();
 
         const get = (sel) => document.querySelector(sel)?.textContent?.trim() || "";
 
-        let views = get("ytd-watch-flexy #info-strings yt-formatted-string");
-        let date  = get("ytd-watch-flexy #info-strings yt-formatted-string:last-child");
-        if (date === views) date = "";
+        const title   = get("ytd-watch-flexy h1.ytd-watch-metadata yt-formatted-string")
+                     || get("ytd-watch-flexy #title h1 yt-formatted-string")
+                     || get("ytd-watch-flexy #title");
+        const channel = get("ytd-watch-flexy ytd-channel-name a")
+                     || get("ytd-watch-flexy #channel-name a");
+        const infoText = get("ytd-watch-flexy #info-container yt-formatted-string#info");
 
         let likes = "";
         const likeBtn = document.querySelector("ytd-watch-flexy like-button-view-model button, ytd-watch-flexy button[aria-label*='like' i]");
         if (likeBtn) {
             const m = (likeBtn.getAttribute("aria-label") || "").match(/([\d,]+)/);
-            likes = m ? m[1] : ((/\d/.test(likeBtn.textContent)) ? likeBtn.textContent.trim() : "");
+            likes = m ? m[1] : (/\d/.test(likeBtn.textContent) ? likeBtn.textContent.trim() : "");
         }
-
         let dislikes = "";
         const disBtn = document.querySelector("ytd-watch-flexy dislike-button-view-model button, #return-youtube-dislike-number");
         if (disBtn) {
             const m = (disBtn.getAttribute("aria-label") || "").match(/([\d,]+)/);
-            dislikes = m ? m[1] : ((/\d/.test(disBtn.textContent)) ? disBtn.textContent.trim() : "");
+            dislikes = m ? m[1] : (/\d/.test(disBtn.textContent) ? disBtn.textContent.trim() : "");
         }
 
+        const container = document.querySelector("ytd-watch-flexy #above-the-fold");
+        if (!container) return;
+
+        if (title) {
+            const titleEl = document.createElement("div");
+            titleEl.id = "nvim-title-inject";
+            titleEl.innerHTML = `<div style="font-size:14px;font-weight:bold;color:${C.fg};margin-bottom:4px;line-height:1.4">${esc(title)}</div>${channel ? `<div style="font-size:11px;color:${C.cyan};margin-bottom:10px">${esc(channel)}</div>` : ""}`;
+            Object.assign(titleEl.style, { marginBottom:"10px", paddingBottom:"10px", borderBottom:`1px solid ${C.border}` });
+            container.insertBefore(titleEl, container.firstChild);
+        }
+
+        const bar = document.createElement("div");
+        bar.id = "nvim-stats";
         const parts = [];
-        if (views)    parts.push(`<span class="views v">${esc(views)}</span>`);
-        if (likes)    parts.push(`<span class="likes v">${esc(likes)} 👍</span>`);
-        if (dislikes) parts.push(`<span class="dislikes v">${esc(dislikes)} 👎</span>`);
-        if (date)     parts.push(`<span class="date v">${esc(date)}</span>`);
+        if (infoText) parts.push(`<span style="color:${C.cyan}">${esc(infoText)}</span>`);
+        if (likes)    parts.push(`<span style="color:${C.green}">${esc(likes)} 👍</span>`);
+        if (dislikes) parts.push(`<span style="color:${C.red}">${esc(dislikes)} 👎</span>`);
         if (!parts.length) parts.push(`<span style="color:${C.fgDim}">stats unavailable</span>`);
-
         bar.innerHTML = parts.join(`<span style="color:${C.fgDark}"> │ </span>`);
+        Object.assign(bar.style, { display:"flex", gap:"12px", flexWrap:"wrap", padding:"0 0 10px 0", marginBottom:"10px", borderBottom:`1px solid ${C.border}`, fontFamily:'"JetBrains Mono",monospace', fontSize:"11px" });
 
-        setTimeout(() => {
-            const container = document.querySelector("ytd-watch-flexy #above-the-fold");
-            if (container) container.insertBefore(bar, container.firstChild);
-        }, 80);
+        const titleInject = document.getElementById("nvim-title-inject");
+        if (titleInject) titleInject.after(bar);
+        else container.insertBefore(bar, container.firstChild);
     }
 
     // ── Panel open/close ──
     let backdrop;
 
-    function ensureBackdrop() {
-        if (backdrop) return;
-        backdrop = document.createElement("div");
-        backdrop.id = "nvim-backdrop";
-        backdrop.addEventListener("click", closePanel);
-        document.body.appendChild(backdrop);
-    }
+    function ensureBackdrop() {} // no backdrop — panels float without dimming
 
     function openPanel(panel) {
-        ensureBackdrop();
         if (state.panelOpen) closePanel();
 
         if (panel === "chat" && !document.querySelector("ytd-live-chat-frame#chat")) {
@@ -150,7 +155,6 @@
         }
 
         document.body.classList.add(panelClasses[panel]);
-        backdrop.classList.add("active");
         state.panelOpen = panel;
         state.mode = "PANEL";
 
@@ -159,13 +163,7 @@
         }
 
         if (panel === "details") {
-            injectStats();
-            setTimeout(() => {
-                // Force expand description
-                const expander = document.querySelector("ytd-text-inline-expander");
-                if (expander) expander.setAttribute("is-expanded", "");
-                document.querySelector("#expand, [slot='expand-button']")?.click();
-            }, 150);
+            setTimeout(injectStats, 200);
         }
 
         updateBar();
@@ -174,8 +172,10 @@
     function closePanel() {
         if (!state.panelOpen) return;
         document.body.classList.remove(panelClasses[state.panelOpen]);
-        if (backdrop) backdrop.classList.remove("active");
-        if (state.panelOpen === "details") document.getElementById("nvim-stats")?.remove();
+        if (state.panelOpen === "details") {
+            document.getElementById("nvim-stats")?.remove();
+            document.getElementById("nvim-title-inject")?.remove();
+        }
         state.panelOpen = null;
         state.mode = "NORMAL";
         updateBar();
@@ -499,7 +499,7 @@
             return;
         }
 
-        if (isWatch() && !e.ctrlKey && !e.altKey && !e.metaKey && WATCH_BLOCK.has(key)) {
+        if (isWatch() && !e.ctrlKey && !e.altKey && !e.metaKey && WATCH_BLOCK.has(key) && state.mode !== "LEADER") {
             e.preventDefault(); e.stopImmediatePropagation(); return;
         }
 
@@ -580,6 +580,11 @@
         });
 
         window.addEventListener("yt-navigate-finish", onNav);
+        document.addEventListener("fullscreenchange", () => {
+            const fs = !!document.fullscreenElement;
+            if (bar) bar.style.display = fs ? "none" : "flex";
+            document.body.style.paddingBottom = fs ? "0" : "";
+        });
         let lastUrl = location.href;
         new MutationObserver(() => {
             if (location.href !== lastUrl) { lastUrl = location.href; onNav(); }
