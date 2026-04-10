@@ -13,8 +13,8 @@
     "use strict";
 
     const C = {
-        bgDark: "#0b0e14", bgFloat: "#131721", border: "#1d222e", bgHover: "#1a1e29",
-        fg: "#bfbdb6", fgDim: "#565b66", fgDark: "#484d58",
+        bgDark: "#080a0e", bgFloat: "#0f1318", border: "#2a3040", bgHover: "#1a2030",
+        fg: "#e8e3da", fgDim: "#7a8394", fgDark: "#3d4452",
         accent: "#e6b450", green: "#7fd962", red: "#d95757",
         yellow: "#ffb454", cyan: "#73b8ff", magenta: "#d2a6ff",
     };
@@ -68,7 +68,19 @@
 
     function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
 
-    // ── Navigation ──
+    // ── Force theater mode on watch pages ──
+    function forceTheater() {
+        if (!isWatch()) return;
+        const flexy = document.querySelector("ytd-watch-flexy");
+        if (!flexy) return;
+        // Already in theater or fullscreen — leave it
+        if (flexy.hasAttribute("theater") || flexy.hasAttribute("fullscreen")) return;
+        // Click the theater button if present
+        const btn = document.querySelector(".ytp-size-button");
+        if (btn) { btn.click(); return; }
+        // Fallback: set the attribute directly
+        flexy.setAttribute("theater", "");
+    }
     function goHome() {
         if (location.pathname === "/") { flash("already home"); return; }
         const logo = document.querySelector("a#logo, ytd-topbar-logo-renderer a, a[href='/']");
@@ -119,7 +131,18 @@
     }
 
     // ── Panel open/close ──
+    let backdrop;
+
+    function ensureBackdrop() {
+        if (backdrop) return;
+        backdrop = document.createElement("div");
+        backdrop.id = "nvim-backdrop";
+        backdrop.addEventListener("click", closePanel);
+        document.body.appendChild(backdrop);
+    }
+
     function openPanel(panel) {
+        ensureBackdrop();
         if (state.panelOpen) closePanel();
 
         if (panel === "chat" && !document.querySelector("ytd-live-chat-frame#chat")) {
@@ -127,6 +150,7 @@
         }
 
         document.body.classList.add(panelClasses[panel]);
+        backdrop.classList.add("active");
         state.panelOpen = panel;
         state.mode = "PANEL";
 
@@ -150,6 +174,7 @@
     function closePanel() {
         if (!state.panelOpen) return;
         document.body.classList.remove(panelClasses[state.panelOpen]);
+        if (backdrop) backdrop.classList.remove("active");
         if (state.panelOpen === "details") document.getElementById("nvim-stats")?.remove();
         state.panelOpen = null;
         state.mode = "NORMAL";
@@ -192,7 +217,7 @@
         searchInput.type = "text";
         searchInput.placeholder = "search youtube...";
         Object.assign(searchInput.style, {
-            flex:"1", background:C.bgFloat, border:"none",
+            flex:"1", background:C.bgDark, border:"none",
             borderBottom:`2px solid ${C.accent}`, color:C.fg,
             fontFamily:'"JetBrains Mono",monospace', fontSize:"18px",
             padding:"10px 4px", outline:"none",
@@ -200,7 +225,7 @@
 
         suggestBox = document.createElement("div");
         Object.assign(suggestBox.style, {
-            width:"100%", background:C.bgFloat, marginTop:"2px",
+            width:"100%", background:C.bgDark, marginTop:"2px",
             maxHeight:"40vh", overflowY:"auto", display:"none",
             border:`1px solid ${C.border}`, borderTop:"none",
         });
@@ -318,7 +343,7 @@
             height:`${BAR_H}px`, lineHeight:`${BAR_H}px`,
             background:C.bgDark, fontFamily:'"JetBrains Mono","Fira Code",monospace',
             fontSize:"11px", padding:"0 10px", zIndex:"999999",
-            borderTop:`1px solid ${C.border}`,
+            borderTop:`1px solid #2a3040`,
             display:"flex", justifyContent:"space-between", alignItems:"center",
             userSelect:"none",
         });
@@ -327,34 +352,36 @@
         Object.assign(barMode.style, { fontWeight:"bold", marginRight:"10px", padding:"2px 8px", fontSize:"11px" });
 
         barHints = document.createElement("span");
-        Object.assign(barHints.style, { color:C.fgDim, flex:"1" });
+        Object.assign(barHints.style, { color:C.fgDim, flex:"1", textAlign:"center" });
 
         // Clickable buttons on the right side of the bar
         const btns = document.createElement("div");
         Object.assign(btns.style, { display:"flex", gap:"0", height:"100%", marginLeft:"8px" });
 
         const barButtons = [
-            { label:"DETAILS", action:() => isWatch() && togglePanel("details"), color:C.accent },
-            { label:"RECS",    action:() => isWatch() && togglePanel("recs"),    color:C.cyan   },
-            { label:"COMM",    action:() => isWatch() && togglePanel("comments"),color:C.magenta},
-            { label:"SEARCH",  action:() => openSearch(),                        color:C.yellow },
-            { label:"HOME",    action:() => goHome(),                            color:C.fg     },
-            { label:"BACK",    action:() => history.back(),                      color:C.fgDim  },
+            { label:"DETAILS", action:() => isWatch() && togglePanel("details"), color:C.accent  },
+            { label:"RECS",    action:() => isWatch() && togglePanel("recs"),    color:C.cyan    },
+            { label:"COMM",    action:() => isWatch() && togglePanel("comments"),color:C.magenta },
+            { label:"SEARCH",  action:() => openSearch(),                        color:C.yellow  },
+            { label:"HOME",    action:() => goHome(),                            color:C.fg      },
+            { label:"BACK",    action:() => history.back(),                      color:C.fgDim   },
         ];
 
         barButtons.forEach(({ label, action, color }) => {
             const b = document.createElement("button");
             b.textContent = label;
             b.dataset.label = label;
+            b.dataset.color = color;
             Object.assign(b.style, {
                 background:"transparent", border:"none",
                 borderLeft:`1px solid ${C.border}`,
-                color, fontFamily:'"JetBrains Mono",monospace',
+                color,
+                fontFamily:'"JetBrains Mono",monospace',
                 fontSize:"10px", padding:"0 10px", cursor:"pointer",
-                height:"100%", transition:"background 0.12s",
+                height:"100%", transition:"background 0.12s, color 0.12s",
             });
-            b.addEventListener("mouseenter", () => b.style.background = C.bgHover);
-            b.addEventListener("mouseleave", () => b.style.background = "transparent");
+            b.addEventListener("mouseenter", () => { b.style.background = C.bgHover; });
+            b.addEventListener("mouseleave", () => { b.style.background = "transparent"; b.style.color = b.dataset.active === "true" ? C.accent : b.dataset.color; });
             b.addEventListener("click", e => { e.preventDefault(); action(); });
             btns.appendChild(b);
         });
@@ -395,13 +422,14 @@
             b.style.pointerEvents = (watchOnly && !isWatch()) ? "none" : "auto";
         });
 
-        // Bold active panel button
-        bar.querySelectorAll("button").forEach(b => b.style.fontWeight = "normal");
+        // Highlight active panel button
         const activeMap = { details:"DETAILS", recs:"RECS", comments:"COMM" };
-        if (state.panelOpen && activeMap[state.panelOpen]) {
-            const ab = [...bar.querySelectorAll("button")].find(b => b.dataset.label === activeMap[state.panelOpen]);
-            if (ab) { ab.style.fontWeight = "bold"; ab.style.color = C.accent; }
-        }
+        bar.querySelectorAll("button").forEach(b => {
+            const isActive = state.panelOpen && activeMap[state.panelOpen] === b.dataset.label;
+            b.dataset.active = isActive ? "true" : "false";
+            b.style.color = isActive ? C.accent : b.dataset.color;
+            b.style.fontWeight = isActive ? "bold" : "normal";
+        });
 
         let page = "HOME";
         if (isWatch()) page = "WATCH";
@@ -504,6 +532,7 @@
         state.mode = "NORMAL";
         updateBar();
         setTimeout(injectSearchBanner, 300);
+        setTimeout(forceTheater, 800);
     }
 
     function injectSearchBanner() {
@@ -557,6 +586,7 @@
         }).observe(document.body, { childList:true, subtree:true });
 
         setTimeout(injectSearchBanner, 500);
+        setTimeout(forceTheater, 1000);
     }
 
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
