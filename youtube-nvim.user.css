@@ -391,6 +391,12 @@ body:-moz-full-screen #nvim-bar { display: none !important; }
 :fullscreen body,
 :-webkit-full-screen body,
 :-moz-full-screen body { padding-bottom: 0 !important; }
+:fullscreen #movie_player,
+:-webkit-full-screen #movie_player,
+:-moz-full-screen #movie_player { max-height: 100vh !important; height: 100vh !important; }
+:fullscreen ytd-watch-flexy,
+:-webkit-full-screen ytd-watch-flexy,
+:-moz-full-screen ytd-watch-flexy { height: 100vh !important; max-height: 100vh !important; }
 #nvim-bar button:hover { background: var(--bg-hover) !important; }
 #nvim-bar button[data-active="true"] { color: var(--accent) !important; font-weight: bold !important; }
 

@@ -584,6 +584,7 @@
             const fs = !!document.fullscreenElement;
             if (bar) bar.style.display = fs ? "none" : "flex";
             document.body.style.paddingBottom = fs ? "0" : "";
+            document.documentElement.style.setProperty("--bar-h", fs ? "0px" : "32px");
         });
         let lastUrl = location.href;
         new MutationObserver(() => {
