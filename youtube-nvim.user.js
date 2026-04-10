@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         YouTube NeoVim v5
+// @name         YouTube Minimal v6
 // @namespace    youtube-nvim
-// @version      5.0.8
-// @description  Vim-style YouTube. Leader key (,) avoids Tridactyl conflicts. CSS-only overlays, no DOM reparenting.
+// @version      6.0.0
+// @description  Distraction-free YouTube. Single bar, merged panels, fluid UX.
 // @author       codePumpkin
 // @match        https://www.youtube.com/*
 // @grant        none
@@ -19,44 +19,39 @@
         yellow: "#ffb454", cyan: "#73b8ff", magenta: "#d2a6ff",
     };
 
-    // ── State ──
+    const BAR_H = 32;
+
     const state = {
         mode: "NORMAL",       // NORMAL | SEARCH | PANEL | LEADER
-        panelOpen: null,      // "comments" | "recs" | "info" | "desc" | null
+        panelOpen: null,      // "comments" | "recs" | "details" | "chat" | null
         leaderTimeout: null,
     };
 
     const panelClasses = {
         comments: "nvim-panel-comments",
         recs:     "nvim-panel-recs",
-        info:     "nvim-panel-info",
-        desc:     "nvim-panel-desc",
+        details:  "nvim-panel-details",
         chat:     "nvim-panel-chat",
     };
 
     const panelLabels = {
         comments: "COMMENTS",
         recs:     "RECOMMENDATIONS",
-        info:     "INFO",
-        desc:     "DESCRIPTION",
+        details:  "DETAILS",
         chat:     "LIVE CHAT",
     };
 
     const panelScrollTargets = {
-        comments: "#comments",
+        comments: "ytd-watch-flexy #comments",
         recs:     "ytd-watch-flexy #secondary",
-        info:     "#above-the-fold",
-        desc:     "#above-the-fold",
+        details:  "ytd-watch-flexy #above-the-fold",
         chat:     "ytd-live-chat-frame#chat",
     };
 
     // ── Helpers ──
-    function isWatchPage() { return location.pathname === "/watch"; }
-    function isSearchPage() { return location.pathname === "/results"; }
-    function isChannelPage() {
-        const p = location.pathname;
-        return p.startsWith("/@") || p.startsWith("/channel/") || p.startsWith("/c/") || p.startsWith("/user/");
-    }
+    const isWatch   = () => location.pathname === "/watch";
+    const isSearch  = () => location.pathname === "/results";
+    const isChannel = () => /^\/((@|channel\/|c\/|user\/).+)/.test(location.pathname);
 
     function isTyping() {
         const a = document.activeElement;
@@ -65,393 +60,230 @@
         return t === "input" || t === "textarea" || a.isContentEditable || a.id === "contenteditable-root";
     }
 
-    function isLiveStream() {
-        // Check for live chat frame
+    function isLive() {
         if (document.querySelector("ytd-live-chat-frame#chat")) return true;
-        // Check for live badge
-        if (document.querySelector(".ytp-live-badge[disabled]")) return true;
-        if (document.querySelector(".ytp-live")) return true;
-        // Check for "watching now" text in view count
-        const viewCount = document.querySelector("ytd-watch-flexy .view-count, ytd-watch-flexy #info-strings");
-        if (viewCount && /watching/i.test(viewCount.textContent)) return true;
+        if (document.querySelector(".ytp-live-badge[disabled], .ytp-live")) return true;
         return false;
     }
 
-    // ── SPA-style home navigation (no page refresh) ──
-    function navigateHome() {
-        if (location.pathname === "/") { flash("Already home"); return; }
-        // Use YouTube's SPA navigation by finding and clicking the logo,
-        // or fall back to pushState + yt-navigate event
+    function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+    // ── Navigation ──
+    function goHome() {
+        if (location.pathname === "/") { flash("already home"); return; }
         const logo = document.querySelector("a#logo, ytd-topbar-logo-renderer a, a[href='/']");
-        if (logo) {
-            logo.click();
-            return;
-        }
-        // Fallback: use YouTube's internal navigation via yt-navigate event
-        const nav = new CustomEvent("yt-navigate", { detail: { endpoint: { browseEndpoint: { browseId: "FEwhat_to_watch" } } } });
-        document.dispatchEvent(nav);
-        // Double fallback: pushState
-        if (location.pathname !== "/") {
-            history.pushState({}, "", "/");
-            window.dispatchEvent(new PopStateEvent("popstate"));
-        }
+        if (logo) { logo.click(); return; }
+        history.pushState({}, "", "/");
+        window.dispatchEvent(new PopStateEvent("popstate"));
     }
 
-    // ── Panel toggle (CSS class only) ──
-    function togglePanel(panel) {
-        if (state.panelOpen === panel) {
-            closePanel();
-        } else {
-            openPanel(panel);
-        }
-    }
+    // ── Stats injection for details panel ──
+    function injectStats() {
+        document.getElementById("nvim-stats")?.remove();
+        const bar = document.createElement("div");
+        bar.id = "nvim-stats";
 
-    // ── Desc panel stats (views, likes, dislikes) ──
-    function injectDescStats() {
-        // Remove old stats bar if present
-        const old = document.getElementById("nvim-desc-stats");
-        if (old) old.remove();
+        const get = (sel) => document.querySelector(sel)?.textContent?.trim() || "";
 
-        const stats = document.createElement("div");
-        stats.id = "nvim-desc-stats";
+        let views = get("ytd-watch-flexy #info-strings yt-formatted-string");
+        let date  = get("ytd-watch-flexy #info-strings yt-formatted-string:last-child");
+        if (date === views) date = "";
 
-        // Views — from the info strings or view count element
-        let views = "";
-        const infoStrings = document.querySelector("ytd-watch-flexy #info-strings yt-formatted-string");
-        if (infoStrings) {
-            views = infoStrings.textContent.trim();
-        } else {
-            const viewEl = document.querySelector("ytd-watch-flexy .view-count, ytd-watch-flexy ytd-video-view-count-renderer span");
-            if (viewEl) views = viewEl.textContent.trim();
-        }
-
-        // Likes — from the like button's aria-label or text
         let likes = "";
-        const likeBtn = document.querySelector('ytd-watch-flexy like-button-view-model button, ytd-watch-flexy #top-level-buttons-computed ytd-toggle-button-renderer:first-child button, ytd-watch-flexy button[aria-label*="like" i]');
+        const likeBtn = document.querySelector("ytd-watch-flexy like-button-view-model button, ytd-watch-flexy button[aria-label*='like' i]");
         if (likeBtn) {
-            const ariaLabel = likeBtn.getAttribute("aria-label") || "";
-            // aria-label is usually like "like this video along with 1,234 other people"
-            const match = ariaLabel.match(/([\d,\.]+)/);
-            if (match) {
-                likes = match[1];
-            } else {
-                // Try the text content of the button
-                const txt = likeBtn.textContent.trim();
-                if (/\d/.test(txt)) likes = txt;
-            }
-        }
-        // Fallback: segmented like button
-        if (!likes) {
-            const segLike = document.querySelector('ytd-watch-flexy ytd-menu-renderer yt-formatted-string#text[aria-label*="like" i], ytd-watch-flexy segmented-like-dislike-button-view-model .yt-spec-button-shape-next__button-text-content');
-            if (segLike && /\d/.test(segLike.textContent)) likes = segLike.textContent.trim();
+            const m = (likeBtn.getAttribute("aria-label") || "").match(/([\d,]+)/);
+            likes = m ? m[1] : ((/\d/.test(likeBtn.textContent)) ? likeBtn.textContent.trim() : "");
         }
 
-        // Dislikes — YouTube hides these, but Return YouTube Dislike extension exposes them
         let dislikes = "";
-        const dislikeBtn = document.querySelector('ytd-watch-flexy #top-level-buttons-computed ytd-toggle-button-renderer:nth-child(2) button, ytd-watch-flexy dislike-button-view-model button');
-        if (dislikeBtn) {
-            const ariaLabel = dislikeBtn.getAttribute("aria-label") || "";
-            const match = ariaLabel.match(/([\d,\.]+)/);
-            if (match) dislikes = match[1];
-            else {
-                const txt = dislikeBtn.textContent.trim();
-                if (/\d/.test(txt)) dislikes = txt;
-            }
-        }
-        // Fallback: RYD extension span
-        if (!dislikes) {
-            const ryd = document.querySelector("#return-youtube-dislike-number, .ryd-tooltip");
-            if (ryd && /\d/.test(ryd.textContent)) dislikes = ryd.textContent.trim();
+        const disBtn = document.querySelector("ytd-watch-flexy dislike-button-view-model button, #return-youtube-dislike-number");
+        if (disBtn) {
+            const m = (disBtn.getAttribute("aria-label") || "").match(/([\d,]+)/);
+            dislikes = m ? m[1] : ((/\d/.test(disBtn.textContent)) ? disBtn.textContent.trim() : "");
         }
 
-        // Upload date
-        let date = "";
-        const dateEl = document.querySelector("ytd-watch-flexy #info-strings yt-formatted-string:last-child, ytd-watch-flexy ytd-video-primary-info-renderer .date");
-        if (dateEl) {
-            const txt = dateEl.textContent.trim();
-            if (txt !== views) date = txt; // avoid duplicating views text
-        }
-
-        // Build the stats bar
         const parts = [];
-        if (views) parts.push(`<span class="nvim-stat-views nvim-stat-value">${esc(views)}</span>`);
-        if (likes) parts.push(`<span><span class="nvim-stat-likes nvim-stat-value">${esc(likes)}</span> likes</span>`);
-        if (dislikes) parts.push(`<span><span class="nvim-stat-dislikes nvim-stat-value">${esc(dislikes)}</span> dislikes</span>`);
-        if (date && date !== views) parts.push(`<span class="nvim-stat-date nvim-stat-value">${esc(date)}</span>`);
+        if (views)    parts.push(`<span class="views v">${esc(views)}</span>`);
+        if (likes)    parts.push(`<span class="likes v">${esc(likes)} 👍</span>`);
+        if (dislikes) parts.push(`<span class="dislikes v">${esc(dislikes)} 👎</span>`);
+        if (date)     parts.push(`<span class="date v">${esc(date)}</span>`);
+        if (!parts.length) parts.push(`<span style="color:${C.fgDim}">stats unavailable</span>`);
 
-        if (parts.length === 0) {
-            parts.push(`<span style="color:${C.fgDim}">stats unavailable</span>`);
-        }
+        bar.innerHTML = parts.join(`<span style="color:${C.fgDark}"> │ </span>`);
 
-        stats.innerHTML = parts.join('<span style="color:' + C.fgDark + '">│</span>');
-
-        // Insert at top of #above-the-fold (the desc overlay container)
-        // Wait a tick for the panel CSS to take effect
         setTimeout(() => {
             const container = document.querySelector("ytd-watch-flexy #above-the-fold");
-            if (container) {
-                container.insertBefore(stats, container.firstChild);
-            }
-        }, 100);
+            if (container) container.insertBefore(bar, container.firstChild);
+        }, 80);
     }
 
+    // ── Panel open/close ──
     function openPanel(panel) {
-        // Close any existing panel first
-        if (state.panelOpen) {
-            closePanel();
-        }
+        if (state.panelOpen) closePanel();
 
-        // Live chat: check if it exists
-        if (panel === "chat") {
-            const chatFrame = document.querySelector("ytd-live-chat-frame#chat");
-            if (!chatFrame) { flash("No live chat on this video"); return; }
+        if (panel === "chat" && !document.querySelector("ytd-live-chat-frame#chat")) {
+            flash("no live chat here"); return;
         }
 
         document.body.classList.add(panelClasses[panel]);
         state.panelOpen = panel;
         state.mode = "PANEL";
 
-        // For recs panel, nudge YouTube to refresh recommendations
         if (panel === "recs") {
-            setTimeout(() => {
-                const secondary = document.querySelector("ytd-watch-flexy #secondary");
-                if (secondary) {
-                    window.dispatchEvent(new Event("resize"));
-                    const contItems = secondary.querySelector("ytd-watch-next-secondary-results-renderer #items");
-                    if (contItems && contItems.children.length === 0) {
-                        secondary.scrollIntoView({ block: "nearest" });
-                    }
-                }
-            }, 100);
+            setTimeout(() => window.dispatchEvent(new Event("resize")), 80);
         }
 
-        // For desc panel, inject stats and force expand the description
-        if (panel === "desc") {
-            injectDescStats();
+        if (panel === "details") {
+            injectStats();
             setTimeout(() => {
+                // Force expand description
                 const expander = document.querySelector("ytd-text-inline-expander");
-                if (expander) {
-                    expander.setAttribute("is-expanded", "");
-                    expander.setAttribute("can-toggle", "");
-                }
-                const btn = document.querySelector("#expand, tp-yt-paper-button#expand, [slot='expand-button']");
-                if (btn) try { btn.click(); } catch (_) {}
-                const descExpand = document.querySelector("ytd-structured-description-content-renderer #expand");
-                if (descExpand) try { descExpand.click(); } catch (_) {}
-                const snippet = document.querySelector("ytd-text-inline-expander #snippet");
-                const plain = document.querySelector("ytd-text-inline-expander #plain-snippet-text");
-                if (snippet) snippet.style.cssText = "display:none!important";
-                if (plain) plain.style.cssText = "display:block!important;max-height:none!important;overflow:visible!important;-webkit-line-clamp:unset!important";
-                const allStrings = document.querySelectorAll("ytd-text-inline-expander yt-attributed-string, ytd-text-inline-expander yt-formatted-string");
-                allStrings.forEach(s => {
-                    s.style.cssText = "display:block!important;max-height:none!important;overflow:visible!important;-webkit-line-clamp:unset!important";
-                });
-            }, 200);
+                if (expander) expander.setAttribute("is-expanded", "");
+                document.querySelector("#expand, [slot='expand-button']")?.click();
+            }, 150);
         }
 
-        updateStatusBar();
-        updateTouchBar();
+        updateBar();
     }
 
-    // ── Ask (YouChat) panel — removed, work in progress ──
-
     function closePanel() {
-        if (state.panelOpen) {
-            document.body.classList.remove(panelClasses[state.panelOpen]);
-            if (state.panelOpen === "desc") {
-                const stats = document.getElementById("nvim-desc-stats");
-                if (stats) stats.remove();
-            }
-        }
+        if (!state.panelOpen) return;
+        document.body.classList.remove(panelClasses[state.panelOpen]);
+        if (state.panelOpen === "details") document.getElementById("nvim-stats")?.remove();
         state.panelOpen = null;
         state.mode = "NORMAL";
-        updateStatusBar();
-        updateTouchBar();
+        updateBar();
+    }
+
+    function togglePanel(panel) {
+        state.panelOpen === panel ? closePanel() : openPanel(panel);
     }
 
     function scrollPanel(dir) {
         if (!state.panelOpen) return;
-        const sel = panelScrollTargets[state.panelOpen];
-        if (!sel) return;
-        const el = document.querySelector(sel);
-        if (el) {
-            el.scrollBy({ top: dir === "down" ? 200 : -200, behavior: "smooth" });
-        }
+        document.querySelector(panelScrollTargets[state.panelOpen])
+            ?.scrollBy({ top: dir === "down" ? 220 : -220, behavior: "smooth" });
     }
 
-    // ── Search overlay with YouTube suggestions ──
-    let searchOverlay, searchInput, suggestionsBox;
-    let suggestDebounce = null;
+    // ── Search overlay ──
+    let searchOverlay, searchInput, suggestBox, suggestDebounce;
 
-    function createSearchOverlay() {
+    function buildSearch() {
         searchOverlay = document.createElement("div");
         searchOverlay.id = "nvim-search-overlay";
         Object.assign(searchOverlay.style, {
-            position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
-            background: "rgba(0,0,0,0.88)", zIndex: "1000000",
-            display: "none", alignItems: "flex-start", justifyContent: "center", paddingTop: "25vh",
+            position:"fixed", inset:"0", background:"rgba(0,0,0,0.88)",
+            zIndex:"1000000", display:"none", alignItems:"flex-start",
+            justifyContent:"center", paddingTop:"25vh",
         });
-
-        const container = document.createElement("div");
-        Object.assign(container.style, { display: "flex", flexDirection: "column", width: "60%", maxWidth: "700px" });
 
         const wrap = document.createElement("div");
-        Object.assign(wrap.style, { display: "flex", alignItems: "center", width: "100%" });
+        Object.assign(wrap.style, { display:"flex", flexDirection:"column", width:"60%", maxWidth:"700px" });
 
-        const pfx = document.createElement("span");
-        pfx.textContent = "/";
-        Object.assign(pfx.style, {
-            color: C.yellow, fontFamily: '"JetBrains Mono",monospace', fontSize: "22px", marginRight: "8px",
-        });
+        const row = document.createElement("div");
+        Object.assign(row.style, { display:"flex", alignItems:"center" });
+
+        const slash = document.createElement("span");
+        slash.textContent = "/";
+        Object.assign(slash.style, { color:C.yellow, fontFamily:'"JetBrains Mono",monospace', fontSize:"22px", marginRight:"8px" });
 
         searchInput = document.createElement("input");
         searchInput.type = "text";
         searchInput.placeholder = "search youtube...";
         Object.assign(searchInput.style, {
-            flex: "1", background: C.bgFloat, border: "none",
-            borderBottom: `2px solid ${C.accent}`, color: C.fg,
-            fontFamily: '"JetBrains Mono",monospace', fontSize: "18px",
-            padding: "10px 4px", outline: "none",
+            flex:"1", background:C.bgFloat, border:"none",
+            borderBottom:`2px solid ${C.accent}`, color:C.fg,
+            fontFamily:'"JetBrains Mono",monospace', fontSize:"18px",
+            padding:"10px 4px", outline:"none",
         });
 
-        suggestionsBox = document.createElement("div");
-        suggestionsBox.id = "nvim-suggestions";
-        Object.assign(suggestionsBox.style, {
-            width: "100%", background: C.bgFloat, marginTop: "2px",
-            maxHeight: "40vh", overflowY: "auto", display: "none",
-            border: `1px solid ${C.border}`, borderTop: "none",
+        suggestBox = document.createElement("div");
+        Object.assign(suggestBox.style, {
+            width:"100%", background:C.bgFloat, marginTop:"2px",
+            maxHeight:"40vh", overflowY:"auto", display:"none",
+            border:`1px solid ${C.border}`, borderTop:"none",
         });
 
-        searchInput.addEventListener("keydown", (e) => {
+        searchInput.addEventListener("keydown", e => {
             e.stopImmediatePropagation();
             if (e.key === "Enter") {
-                const selected = suggestionsBox.querySelector(".nvim-suggest-selected");
-                const q = selected ? selected.dataset.query : searchInput.value.trim();
-                if (q) location.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+                const sel = suggestBox.querySelector(".sel");
+                const q = sel ? sel.dataset.q : searchInput.value.trim();
+                if (q) location.href = `/results?search_query=${encodeURIComponent(q)}`;
                 closeSearch();
-            } else if (e.key === "Escape") {
-                e.preventDefault();
-                closeSearch();
-            } else if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) {
-                e.preventDefault();
-                moveSuggestion(1);
-            } else if (e.key === "ArrowUp" || (e.key === "Tab" && e.shiftKey)) {
-                e.preventDefault();
-                moveSuggestion(-1);
-            }
+            } else if (e.key === "Escape") { e.preventDefault(); closeSearch(); }
+            else if (e.key === "ArrowDown" || (e.key === "Tab" && !e.shiftKey)) { e.preventDefault(); moveSuggest(1); }
+            else if (e.key === "ArrowUp"   || (e.key === "Tab" && e.shiftKey))  { e.preventDefault(); moveSuggest(-1); }
         });
 
         searchInput.addEventListener("input", () => {
             clearTimeout(suggestDebounce);
-            suggestDebounce = setTimeout(() => fetchSuggestions(searchInput.value.trim()), 150);
+            suggestDebounce = setTimeout(() => fetchSuggest(searchInput.value.trim()), 150);
         });
 
-        wrap.append(pfx, searchInput);
-        container.append(wrap, suggestionsBox);
-        searchOverlay.appendChild(container);
-        searchOverlay.addEventListener("click", (e) => { if (e.target === searchOverlay) closeSearch(); });
+        row.append(slash, searchInput);
+        wrap.append(row, suggestBox);
+        searchOverlay.appendChild(wrap);
+        searchOverlay.addEventListener("click", e => { if (e.target === searchOverlay) closeSearch(); });
         document.body.appendChild(searchOverlay);
     }
 
-    function fetchSuggestions(query) {
-        if (!query) { suggestionsBox.style.display = "none"; return; }
-
-        // YouTube's public suggestion API (JSONP-style, returns array)
-        const script = document.createElement("script");
-        const cbName = "_nvimSuggestCb" + Date.now();
-        window[cbName] = (data) => {
-            delete window[cbName];
-            script.remove();
-            if (!data || !data[1]) return;
-            renderSuggestions(data[1], query);
+    function fetchSuggest(q) {
+        if (!q) { suggestBox.style.display = "none"; return; }
+        const cb = "_ys" + Date.now();
+        const s = document.createElement("script");
+        window[cb] = data => {
+            delete window[cb]; s.remove();
+            if (data?.[1]) renderSuggest(data[1], q);
         };
-        script.src = `https://suggestqueries-clients6.youtube.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(query)}&callback=${cbName}`;
-        document.head.appendChild(script);
-
-        // Cleanup if it takes too long
-        setTimeout(() => { if (window[cbName]) { delete window[cbName]; script.remove(); } }, 3000);
+        s.src = `https://suggestqueries-clients6.youtube.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(q)}&callback=${cb}`;
+        document.head.appendChild(s);
+        setTimeout(() => { if (window[cb]) { delete window[cb]; s.remove(); } }, 3000);
     }
 
-    function renderSuggestions(items, query) {
-        suggestionsBox.innerHTML = "";
-        if (!items.length) { suggestionsBox.style.display = "none"; return; }
-
-        items.forEach((item, idx) => {
+    function renderSuggest(items, q) {
+        suggestBox.innerHTML = "";
+        if (!items.length) { suggestBox.style.display = "none"; return; }
+        items.forEach(item => {
             const text = Array.isArray(item) ? item[0] : String(item);
             const div = document.createElement("div");
-            div.className = "nvim-suggest-item";
-            div.dataset.query = text;
+            div.dataset.q = text;
             Object.assign(div.style, {
-                padding: "8px 12px", cursor: "pointer",
-                fontFamily: '"JetBrains Mono",monospace', fontSize: "14px",
-                color: C.fg, borderBottom: `1px solid ${C.border}`,
-                transition: "background 0.1s",
+                padding:"8px 12px", cursor:"pointer",
+                fontFamily:'"JetBrains Mono",monospace', fontSize:"13px",
+                color:C.fg, borderBottom:`1px solid ${C.border}`,
             });
-
-            // Highlight matching part
-            const lowerText = text.toLowerCase();
-            const lowerQuery = query.toLowerCase();
-            const matchIdx = lowerText.indexOf(lowerQuery);
-            if (matchIdx >= 0) {
-                const before = text.slice(0, matchIdx);
-                const match = text.slice(matchIdx, matchIdx + query.length);
-                const after = text.slice(matchIdx + query.length);
-                div.innerHTML = `${esc(before)}<span style="color:${C.accent};font-weight:bold">${esc(match)}</span>${esc(after)}`;
-            } else {
-                div.textContent = text;
-            }
-
-            div.addEventListener("mouseenter", () => {
-                clearSuggestionSelection();
-                div.classList.add("nvim-suggest-selected");
-                div.style.background = C.bgHover || "#1a1e29";
-                div.style.color = C.accent;
-            });
-            div.addEventListener("mouseleave", () => {
-                div.classList.remove("nvim-suggest-selected");
-                div.style.background = "transparent";
-                div.style.color = C.fg;
-            });
-            div.addEventListener("click", () => {
-                location.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(text)}`;
-                closeSearch();
-            });
-
-            suggestionsBox.appendChild(div);
+            const lo = text.toLowerCase(), lq = q.toLowerCase(), mi = lo.indexOf(lq);
+            div.innerHTML = mi >= 0
+                ? `${esc(text.slice(0,mi))}<span style="color:${C.accent};font-weight:bold">${esc(text.slice(mi,mi+q.length))}</span>${esc(text.slice(mi+q.length))}`
+                : esc(text);
+            div.addEventListener("mouseenter", () => { clearSel(); div.classList.add("sel"); div.style.background=C.bgHover; div.style.color=C.accent; });
+            div.addEventListener("mouseleave", () => { div.classList.remove("sel"); div.style.background="transparent"; div.style.color=C.fg; });
+            div.addEventListener("click", () => { location.href=`/results?search_query=${encodeURIComponent(text)}`; closeSearch(); });
+            suggestBox.appendChild(div);
         });
-
-        suggestionsBox.style.display = "block";
+        suggestBox.style.display = "block";
     }
 
-    function esc(str) {
-        const d = document.createElement("div");
-        d.textContent = str;
-        return d.innerHTML;
-    }
-
-    function clearSuggestionSelection() {
-        suggestionsBox.querySelectorAll(".nvim-suggest-selected").forEach(el => {
-            el.classList.remove("nvim-suggest-selected");
-            el.style.background = "transparent";
-            el.style.color = C.fg;
+    function clearSel() {
+        suggestBox.querySelectorAll(".sel").forEach(el => {
+            el.classList.remove("sel"); el.style.background="transparent"; el.style.color=C.fg;
         });
     }
 
-    function moveSuggestion(dir) {
-        const items = Array.from(suggestionsBox.querySelectorAll(".nvim-suggest-item"));
+    function moveSuggest(dir) {
+        const items = [...suggestBox.querySelectorAll("div")];
         if (!items.length) return;
-        const current = suggestionsBox.querySelector(".nvim-suggest-selected");
-        let idx = current ? items.indexOf(current) : -1;
-        clearSuggestionSelection();
-        idx += dir;
-        if (idx < 0) idx = items.length - 1;
-        if (idx >= items.length) idx = 0;
-        items[idx].classList.add("nvim-suggest-selected");
-        items[idx].style.background = "#1a1e29";
+        const cur = suggestBox.querySelector(".sel");
+        let idx = cur ? items.indexOf(cur) : -1;
+        clearSel();
+        idx = (idx + dir + items.length) % items.length;
+        items[idx].classList.add("sel");
+        items[idx].style.background = C.bgHover;
         items[idx].style.color = C.accent;
-        items[idx].scrollIntoView({ block: "nearest" });
-        // Update input to show selected suggestion
-        searchInput.value = items[idx].dataset.query;
+        items[idx].scrollIntoView({ block:"nearest" });
+        searchInput.value = items[idx].dataset.q;
     }
 
     function openSearch() {
@@ -460,416 +292,271 @@
         searchOverlay.style.display = "flex";
         searchInput.value = "";
         searchInput.focus();
-        updateStatusBar();
-        updateTouchBar();
+        updateBar();
     }
 
     function closeSearch() {
         state.mode = "NORMAL";
         searchOverlay.style.display = "none";
         searchInput.blur();
-        suggestionsBox.innerHTML = "";
-        suggestionsBox.style.display = "none";
+        suggestBox.innerHTML = "";
+        suggestBox.style.display = "none";
         clearTimeout(suggestDebounce);
-        updateStatusBar();
-        updateTouchBar();
+        updateBar();
     }
 
-    // ── Touch button bar ──
-    let touchBar;
+    // ── Single status bar ──
+    let bar, barMode, barHints, barRight;
 
-    function createTouchBar() {
-        touchBar = document.createElement("div");
-        touchBar.id = "nvim-touchbar";
-        Object.assign(touchBar.style, {
-            position: "fixed", bottom: "26px", left: "0", right: "0",
-            height: "44px", background: C.bgFloat,
-            borderTop: `1px solid ${C.border}`,
-            display: "flex", alignItems: "center", justifyContent: "space-around",
-            zIndex: "999998", userSelect: "none",
-            fontFamily: '"JetBrains Mono",monospace', fontSize: "11px",
-        });
-
-        const buttons = [
-            { label: "≡ INFO",    action: () => isWatchPage() && togglePanel("info"),     color: C.yellow  },
-            { label: "▤ DESC",    action: () => isWatchPage() && togglePanel("desc"),     color: C.green   },
-            { label: "✦ RECS",    action: () => isWatchPage() && togglePanel("recs"),     color: C.cyan    },
-            { label: "💬 COMM",   action: () => isWatchPage() && togglePanel("comments"), color: C.magenta },
-            { label: "⌕ SEARCH",  action: () => openSearch(),                             color: C.accent  },
-            { label: "⌂ HOME",    action: () => navigateHome(),                           color: C.fg      },
-            { label: "← BACK",    action: () => history.back(),                           color: C.fgDim   },
-        ];
-
-        buttons.forEach(({ label, action, color }) => {
-            const btn = document.createElement("button");
-            btn.textContent = label;
-            Object.assign(btn.style, {
-                background: "transparent", border: "none", color,
-                fontFamily: '"JetBrains Mono",monospace', fontSize: "11px",
-                padding: "6px 8px", cursor: "pointer", flex: "1",
-                borderRight: `1px solid ${C.border}`, height: "100%",
-                transition: "background 0.15s",
-            });
-            btn.addEventListener("pointerdown", (e) => {
-                e.preventDefault();
-                btn.style.background = C.bgHover || "#1a1e29";
-            });
-            btn.addEventListener("pointerup", (e) => {
-                e.preventDefault();
-                btn.style.background = "transparent";
-                action();
-            });
-            btn.addEventListener("pointerleave", () => { btn.style.background = "transparent"; });
-            touchBar.appendChild(btn);
-        });
-
-        // Last button has no right border
-        touchBar.lastChild.style.borderRight = "none";
-        document.body.appendChild(touchBar);
-        updateTouchBar();
-    }
-
-    function updateTouchBar() {
-        if (!touchBar) return;
-        // Show/hide watch-page-only buttons based on current page
-        const btns = touchBar.querySelectorAll("button");
-        const onWatch = isWatchPage();
-        // First 4 buttons are watch-only
-        [0, 1, 2, 3].forEach(i => {
-            btns[i].style.opacity = onWatch ? "1" : "0.3";
-            btns[i].style.pointerEvents = onWatch ? "auto" : "none";
-        });
-        // Highlight active panel button
-        const panelMap = { info: 0, desc: 1, recs: 2, comments: 3 };
-        btns.forEach(b => b.style.fontWeight = "normal");
-        if (state.panelOpen && panelMap[state.panelOpen] !== undefined) {
-            btns[panelMap[state.panelOpen]].style.fontWeight = "bold";
-        }
-    }
-
-    // ── Status bar ──
-    let statusBar, statusMode, statusHints, statusRight;
-
-    function createStatusBar() {
+    function buildBar() {
         document.body.classList.add("nvim-js-active");
 
-        statusBar = document.createElement("div");
-        statusBar.id = "nvim-statusbar";
-        Object.assign(statusBar.style, {
-            position: "fixed", bottom: "0", left: "0", right: "0",
-            height: "26px", lineHeight: "26px", background: C.bgDark,
-            color: C.accent, fontFamily: '"JetBrains Mono","Fira Code","Cascadia Code",monospace',
-            fontSize: "12px", padding: "0 12px", zIndex: "999999",
-            borderTop: `1px solid ${C.border}`, display: "flex",
-            justifyContent: "space-between", alignItems: "center", userSelect: "none",
+        bar = document.createElement("div");
+        bar.id = "nvim-bar";
+        Object.assign(bar.style, {
+            position:"fixed", bottom:"0", left:"0", right:"0",
+            height:`${BAR_H}px`, lineHeight:`${BAR_H}px`,
+            background:C.bgDark, fontFamily:'"JetBrains Mono","Fira Code",monospace',
+            fontSize:"11px", padding:"0 10px", zIndex:"999999",
+            borderTop:`1px solid ${C.border}`,
+            display:"flex", justifyContent:"space-between", alignItems:"center",
+            userSelect:"none",
         });
 
-        statusMode = document.createElement("span");
-        statusMode.style.fontWeight = "bold";
-        statusHints = document.createElement("span");
-        statusHints.style.color = C.fgDim;
-        statusHints.style.fontSize = "11px";
-        statusRight = document.createElement("span");
-        statusRight.style.color = C.fgDark;
-        statusRight.style.fontSize = "11px";
+        barMode = document.createElement("span");
+        Object.assign(barMode.style, { fontWeight:"bold", marginRight:"10px", padding:"2px 8px", fontSize:"11px" });
 
-        statusBar.append(statusMode, statusHints, statusRight);
-        document.body.appendChild(statusBar);
-        updateStatusBar();
+        barHints = document.createElement("span");
+        Object.assign(barHints.style, { color:C.fgDim, flex:"1" });
+
+        // Clickable buttons on the right side of the bar
+        const btns = document.createElement("div");
+        Object.assign(btns.style, { display:"flex", gap:"0", height:"100%", marginLeft:"8px" });
+
+        const barButtons = [
+            { label:"DETAILS", action:() => isWatch() && togglePanel("details"), color:C.accent },
+            { label:"RECS",    action:() => isWatch() && togglePanel("recs"),    color:C.cyan   },
+            { label:"COMM",    action:() => isWatch() && togglePanel("comments"),color:C.magenta},
+            { label:"SEARCH",  action:() => openSearch(),                        color:C.yellow },
+            { label:"HOME",    action:() => goHome(),                            color:C.fg     },
+            { label:"BACK",    action:() => history.back(),                      color:C.fgDim  },
+        ];
+
+        barButtons.forEach(({ label, action, color }) => {
+            const b = document.createElement("button");
+            b.textContent = label;
+            b.dataset.label = label;
+            Object.assign(b.style, {
+                background:"transparent", border:"none",
+                borderLeft:`1px solid ${C.border}`,
+                color, fontFamily:'"JetBrains Mono",monospace',
+                fontSize:"10px", padding:"0 10px", cursor:"pointer",
+                height:"100%", transition:"background 0.12s",
+            });
+            b.addEventListener("mouseenter", () => b.style.background = C.bgHover);
+            b.addEventListener("mouseleave", () => b.style.background = "transparent");
+            b.addEventListener("click", e => { e.preventDefault(); action(); });
+            btns.appendChild(b);
+        });
+
+        barRight = document.createElement("span");
+        Object.assign(barRight.style, { color:C.fgDark, fontSize:"10px", marginLeft:"8px", whiteSpace:"nowrap" });
+
+        bar.append(barMode, barHints, btns, barRight);
+        document.body.appendChild(bar);
+        updateBar();
     }
 
-    function updateStatusBar() {
-        if (!statusBar) return;
-        const colors = { NORMAL: C.green, SEARCH: C.yellow, PANEL: C.magenta, LEADER: C.accent };
+    const modeColors = { NORMAL:C.green, SEARCH:C.yellow, PANEL:C.magenta, LEADER:C.accent };
 
-        statusMode.textContent = ` -- ${state.mode} -- `;
-        statusMode.style.color = C.bgDark;
-        statusMode.style.background = colors[state.mode] || C.accent;
-        statusMode.style.padding = "0 8px";
-        statusMode.style.marginRight = "12px";
+    function updateBar() {
+        if (!bar) return;
+
+        barMode.textContent = state.mode;
+        barMode.style.color = C.bgDark;
+        barMode.style.background = modeColors[state.mode] || C.accent;
 
         if (state.mode === "LEADER") {
-            const live = isLiveStream() ? " | l chat" : "";
-            statusHints.textContent = `c comm | e recs | q desc | i info${live} | , search`;
+            barHints.textContent = `c comm  e recs  d details${isLive() ? "  l chat" : ""}  , search`;
         } else if (state.mode === "PANEL") {
-            statusHints.textContent = "Ctrl+j/k scroll | Esc or , close | ,, search";
-        } else if (isWatchPage()) {
-            statusHints.textContent = ", leader | \\ back | H home";
-        } else if (isChannelPage()) {
-            statusHints.textContent = "1 vids | 2 lists | 3 live | 4 home | , leader | \\ back | H home";
+            barHints.textContent = "Ctrl+j/k scroll  Esc close";
+        } else if (isChannel()) {
+            barHints.textContent = "1 videos  2 playlists  3 live  4 home  , leader";
+        } else if (isWatch()) {
+            barHints.textContent = ", leader  \\ back  H home";
         } else {
-            statusHints.textContent = ", leader | \\ back | H home";
+            barHints.textContent = ", leader  \\ back  H home";
+        }
+
+        // Dim watch-only buttons when not on watch page
+        bar.querySelectorAll("button").forEach(b => {
+            const watchOnly = ["DETAILS","RECS","COMM"].includes(b.dataset.label);
+            b.style.opacity = (watchOnly && !isWatch()) ? "0.3" : "1";
+            b.style.pointerEvents = (watchOnly && !isWatch()) ? "none" : "auto";
+        });
+
+        // Bold active panel button
+        bar.querySelectorAll("button").forEach(b => b.style.fontWeight = "normal");
+        const activeMap = { details:"DETAILS", recs:"RECS", comments:"COMM" };
+        if (state.panelOpen && activeMap[state.panelOpen]) {
+            const ab = [...bar.querySelectorAll("button")].find(b => b.dataset.label === activeMap[state.panelOpen]);
+            if (ab) { ab.style.fontWeight = "bold"; ab.style.color = C.accent; }
         }
 
         let page = "HOME";
-        if (isWatchPage()) page = "WATCH";
-        else if (isSearchPage()) {
+        if (isWatch()) page = "WATCH";
+        else if (isSearch()) {
             const q = new URLSearchParams(location.search).get("search_query");
-            page = q ? `SEARCH: ${q}` : "SEARCH";
-        } else if (isChannelPage()) page = "CHANNEL";
+            page = q ? `/ ${q}` : "SEARCH";
+        } else if (isChannel()) page = "CHANNEL";
 
-        const panel = state.panelOpen ? ` | ${panelLabels[state.panelOpen]}` : "";
-        statusRight.textContent = `${page}${panel}`;
+        barRight.textContent = state.panelOpen ? `${page} › ${panelLabels[state.panelOpen]}` : page;
     }
 
     function flash(msg) {
-        if (!statusHints) return;
-        const prev = statusHints.style.color;
-        statusHints.textContent = msg;
-        statusHints.style.color = C.red;
-        setTimeout(() => { statusHints.style.color = prev; updateStatusBar(); }, 2000);
+        if (!barHints) return;
+        const prev = barHints.textContent;
+        barHints.textContent = msg;
+        barHints.style.color = C.red;
+        setTimeout(() => { barHints.style.color = C.fgDim; updateBar(); }, 2000);
     }
 
     // ── Channel tabs ──
-    const channelTabs = { "1": "Videos", "2": "Playlists", "3": "Live", "4": "Home" };
+    const tabMap = { "1":"Videos", "2":"Playlists", "3":"Live", "4":"Home" };
 
-    function clickChannelTab(tabTitle) {
-        const tabs = document.querySelectorAll("yt-tab-shape");
-        for (const t of tabs) {
-            const title = (t.getAttribute("tab-title") || t.textContent || "").trim();
-            if (title.toLowerCase() === tabTitle.toLowerCase()) {
-                const inner = t.querySelector(".yt-tab-shape__tab, [role='tab']") || t;
-                inner.click();
-                flash(`Tab: ${title}`);
-                return;
+    function clickTab(title) {
+        for (const t of document.querySelectorAll("yt-tab-shape")) {
+            if ((t.getAttribute("tab-title") || t.textContent).trim().toLowerCase() === title.toLowerCase()) {
+                (t.querySelector(".yt-tab-shape__tab, [role='tab']") || t).click();
+                flash(`→ ${title}`); return;
             }
         }
-        // Legacy paper tabs
-        const paperTabs = document.querySelectorAll("tp-yt-paper-tab");
-        for (const pt of paperTabs) {
-            if (pt.textContent.trim().toLowerCase() === tabTitle.toLowerCase()) {
-                pt.click(); flash(`Tab: ${tabTitle}`); return;
-            }
-        }
-        flash(`Tab "${tabTitle}" not found`);
+        flash(`tab "${title}" not found`);
     }
 
-    // ── Leader key handler ──
+    // ── Leader ──
     function enterLeader() {
-        // If a panel is open, first comma closes it instead of entering leader
-        if (state.panelOpen) {
-            closePanel();
-            return;
-        }
+        if (state.panelOpen) { closePanel(); return; }
         state.mode = "LEADER";
-        updateStatusBar();
-        // Timeout: if no second key in 1.5s, cancel
+        updateBar();
         state.leaderTimeout = setTimeout(() => {
-            if (state.mode === "LEADER") {
-                state.mode = "NORMAL";
-                updateStatusBar();
-            }
+            if (state.mode === "LEADER") { state.mode = "NORMAL"; updateBar(); }
         }, 1500);
     }
 
-    function handleLeaderKey(key) {
+    function handleLeader(key) {
         clearTimeout(state.leaderTimeout);
-
-        if (isWatchPage()) {
-            switch (key) {
-                case "c": togglePanel("comments"); return true;
-                case "e": togglePanel("recs"); return true;
-                case "q": togglePanel("desc"); return true;
-                case "i": togglePanel("info"); return true;
-                case "l":
-                    if (isLiveStream()) { togglePanel("chat"); }
-                    else { flash("Not a live stream"); }
-                    return true;
-            }
+        if (isWatch()) {
+            if (key === "c") { togglePanel("comments"); return; }
+            if (key === "e") { togglePanel("recs"); return; }
+            if (key === "d") { togglePanel("details"); return; }
+            if (key === "l") { isLive() ? togglePanel("chat") : flash("not a live stream"); return; }
         }
-
-        if (key === ",") { openSearch(); return true; }
-
-        // No match — back to previous mode
+        if (key === ",") { openSearch(); return; }
         state.mode = state.panelOpen ? "PANEL" : "NORMAL";
-        updateStatusBar();
-        return false;
+        updateBar();
     }
 
-    // ── Main keydown ──
-    // Keys YouTube hijacks on watch page that cause problems:
-    //   j/k/l/h  → seek/volume → layout shifts + extra padding
-    //   c        → captions toggle → CC mode stuck, video freeze
-    const WATCH_BLOCKED_KEYS = new Set(["j", "k", "l", "h", "c"]);
+    // ── Keydown ──
+    const WATCH_BLOCK = new Set(["j","k","l","h","c"]);
 
-    function handleKeydown(e) {
-        // Never intercept when typing in inputs
+    function onKey(e) {
         if (isTyping() && state.mode !== "SEARCH") return;
-
         const key = e.key;
 
-        // In SEARCH mode: allow comma to close if search input is not focused
         if (state.mode === "SEARCH") {
             if (key === "," && document.activeElement !== searchInput) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                closeSearch();
-                return;
+                e.preventDefault(); e.stopImmediatePropagation(); closeSearch();
             }
-            return; // search input handles its own keys
-        }
-
-        // Watch page: block YouTube's problematic default key handlers FIRST
-        if (isWatchPage() && !e.ctrlKey && !e.altKey && !e.metaKey && WATCH_BLOCKED_KEYS.has(key)) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
             return;
         }
 
-        // Leader mode: waiting for second key
+        if (isWatch() && !e.ctrlKey && !e.altKey && !e.metaKey && WATCH_BLOCK.has(key)) {
+            e.preventDefault(); e.stopImmediatePropagation(); return;
+        }
+
         if (state.mode === "LEADER") {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            handleLeaderKey(key);
-            return;
+            e.preventDefault(); e.stopImmediatePropagation(); handleLeader(key); return;
         }
 
-        // Escape: close panel or do nothing
         if (key === "Escape") {
-            if (state.panelOpen) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                closePanel();
-            }
+            if (state.panelOpen) { e.preventDefault(); e.stopImmediatePropagation(); closePanel(); }
             return;
         }
 
-        // Panel mode: Ctrl+j/k to scroll
-        if (state.mode === "PANEL" && e.ctrlKey) {
-            if (key === "j" || key === "k") {
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                scrollPanel(key === "j" ? "down" : "up");
-                return;
-            }
+        if (state.mode === "PANEL" && e.ctrlKey && (key === "j" || key === "k")) {
+            e.preventDefault(); e.stopImmediatePropagation();
+            scrollPanel(key === "j" ? "down" : "up"); return;
         }
 
-        // Don't intercept modified keys (let Tridactyl handle them)
         if (e.ctrlKey || e.altKey || e.metaKey) return;
 
-        // Comma = leader key
-        if (key === ",") {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            enterLeader();
-            return;
-        }
-
-        // Backslash = go back (previous page)
-        if (key === "\\") {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            history.back();
-            return;
-        }
-
-        // H = SPA-style home (no page refresh, like clicking YouTube logo)
-        if (key === "H") {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            navigateHome();
-            return;
-        }
-
-        // Channel page: 1-4 switch tabs
-        if (isChannelPage() && channelTabs[key]) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            clickChannelTab(channelTabs[key]);
-            return;
-        }
-
-        // Everything else: let Tridactyl handle it
+        if (key === ",") { e.preventDefault(); e.stopImmediatePropagation(); enterLeader(); return; }
+        if (key === "\\") { e.preventDefault(); e.stopImmediatePropagation(); history.back(); return; }
+        if (key === "H") { e.preventDefault(); e.stopImmediatePropagation(); goHome(); return; }
+        if (isChannel() && tabMap[key]) { e.preventDefault(); e.stopImmediatePropagation(); clickTab(tabMap[key]); return; }
     }
 
-    // ── SPA navigation ──
-    function onNavigate() {
+    // ── SPA nav ──
+    function onNav() {
         if (state.panelOpen) closePanel();
         if (state.mode === "SEARCH") closeSearch();
         state.mode = "NORMAL";
-        updateStatusBar();
-        updateTouchBar();
-        // Inject search title if on search page
-        setTimeout(injectSearchTitle, 300);
+        updateBar();
+        setTimeout(injectSearchBanner, 300);
     }
 
-    // ── Search page title banner ──
-    function injectSearchTitle() {
-        // Remove old one
-        const old = document.getElementById("nvim-search-title");
-        if (old) old.remove();
-
-        if (!isSearchPage()) return;
+    function injectSearchBanner() {
+        document.getElementById("nvim-search-banner")?.remove();
+        if (!isSearch()) return;
         const q = new URLSearchParams(location.search).get("search_query");
         if (!q) return;
 
         const banner = document.createElement("div");
-        banner.id = "nvim-search-title";
+        banner.id = "nvim-search-banner";
         Object.assign(banner.style, {
-            width: "100%", padding: "12px 16px", boxSizing: "border-box",
-            background: C.bgDark, borderBottom: `1px solid ${C.border}`,
-            fontFamily: '"JetBrains Mono","Fira Code",monospace',
-            fontSize: "14px", color: C.fgDim, userSelect: "none",
-            display: "flex", alignItems: "center", gap: "8px",
+            width:"100%", padding:"10px 14px", boxSizing:"border-box",
+            background:C.bgDark, borderBottom:`1px solid ${C.border}`,
+            fontFamily:'"JetBrains Mono",monospace', fontSize:"13px",
+            color:C.fgDim, display:"flex", alignItems:"center", gap:"8px",
         });
+        banner.innerHTML = `<span style="color:${C.yellow};font-size:15px;font-weight:bold">/</span><span style="color:${C.accent};font-weight:bold">${esc(q)}</span>`;
 
-        const icon = document.createElement("span");
-        icon.textContent = "/";
-        Object.assign(icon.style, { color: C.yellow, fontSize: "16px", fontWeight: "bold" });
+        const cnt = document.createElement("span");
+        Object.assign(cnt.style, { color:C.fgDark, fontSize:"10px", marginLeft:"auto" });
+        setTimeout(() => { cnt.textContent = `${document.querySelectorAll("ytd-search ytd-video-renderer").length} results`; }, 900);
+        banner.appendChild(cnt);
 
-        const text = document.createElement("span");
-        text.textContent = q;
-        Object.assign(text.style, { color: C.accent, fontWeight: "bold" });
-
-        const count = document.createElement("span");
-        Object.assign(count.style, { color: C.fgDark, fontSize: "11px", marginLeft: "auto" });
-        // Count results after a short delay
-        setTimeout(() => {
-            const results = document.querySelectorAll("ytd-search ytd-video-renderer");
-            count.textContent = `${results.length} results`;
-        }, 1000);
-
-        banner.append(icon, text, count);
-
-        // Insert at top of search results
-        const target = document.querySelector("ytd-search ytd-section-list-renderer #contents")
-            || document.querySelector("ytd-search #page-manager");
-        if (target) {
-            target.insertBefore(banner, target.firstChild);
-        }
+        const target = document.querySelector("ytd-search ytd-section-list-renderer #contents, ytd-search #page-manager");
+        if (target) target.insertBefore(banner, target.firstChild);
     }
 
     // ── Init ──
     function init() {
-        createStatusBar();
-        createSearchOverlay();
-        createTouchBar();
+        buildBar();
+        buildSearch();
 
-        // Block problematic YouTube keys on watch page across all key event types
-        function blockWatchKeys(e) {
+        const blockWatch = e => {
             if (isTyping()) return;
-            if (isWatchPage() && !e.ctrlKey && !e.altKey && !e.metaKey && WATCH_BLOCKED_KEYS.has(e.key)) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
+            if (isWatch() && !e.ctrlKey && !e.altKey && !e.metaKey && WATCH_BLOCK.has(e.key)) {
+                e.preventDefault(); e.stopImmediatePropagation();
             }
-        }
+        };
 
-        window.addEventListener("keydown", handleKeydown, true);
-        document.addEventListener("keydown", handleKeydown, true);
-        window.addEventListener("keyup", blockWatchKeys, true);
-        document.addEventListener("keyup", blockWatchKeys, true);
-        window.addEventListener("keypress", blockWatchKeys, true);
-        document.addEventListener("keypress", blockWatchKeys, true);
+        window.addEventListener("keydown", onKey, true);
+        document.addEventListener("keydown", onKey, true);
+        ["keyup","keypress"].forEach(ev => {
+            window.addEventListener(ev, blockWatch, true);
+            document.addEventListener(ev, blockWatch, true);
+        });
 
-        window.addEventListener("yt-navigate-finish", onNavigate);
-
+        window.addEventListener("yt-navigate-finish", onNav);
         let lastUrl = location.href;
         new MutationObserver(() => {
-            if (location.href !== lastUrl) { lastUrl = location.href; onNavigate(); }
-        }).observe(document.body, { childList: true, subtree: true });
+            if (location.href !== lastUrl) { lastUrl = location.href; onNav(); }
+        }).observe(document.body, { childList:true, subtree:true });
 
-        // Initial check for search page
-        setTimeout(injectSearchTitle, 500);
+        setTimeout(injectSearchBanner, 500);
     }
 
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
