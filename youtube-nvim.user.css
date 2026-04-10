@@ -11,15 +11,15 @@
 
 /* 0. PALETTE */
 :root {
-    --bg:         #0d1017;
-    --bg-dark:    #0b0e14;
-    --bg-float:   #131721;
-    --bg-hover:   #1a1e29;
-    --bg-sel:     #1d222e;
-    --fg:         #bfbdb6;
-    --fg-dim:     #565b66;
-    --fg-dark:    #484d58;
-    --border:     #1d222e;
+    --bg:         #0a0c10;
+    --bg-dark:    #080a0e;
+    --bg-float:   #0f1318;
+    --bg-hover:   #1a2030;
+    --bg-sel:     #1a2030;
+    --fg:         #e8e3da;
+    --fg-dim:     #7a8394;
+    --fg-dark:    #3d4452;
+    --border:     #2a3040;
     --accent:     #e6b450;
     --green:      #7fd962;
     --red:        #d95757;
@@ -175,39 +175,47 @@ ytd-search ytd-ad-slot-renderer, ytd-search ytd-promoted-video-renderer { displa
 ytd-search ytd-video-renderer:hover { outline: 1px solid var(--accent) !important; outline-offset: -1px; }
 ytd-search ytd-video-renderer.nvim-selected { outline: 2px solid var(--green) !important; background: var(--bg-sel) !important; }
 
-/* 9. WATCH PAGE — full-width player, no wasted space */
+/* 9. WATCH PAGE — theater mode fills viewport
+   Strategy: JS forces theater mode (ytd-watch-flexy[theater]).
+   YouTube's own layout engine then sizes the player correctly.
+   We only override max-height on the containers — never touch
+   .html5-video-container or video.html5-main-video. */
 ytd-watch-flexy {
     --ytd-watch-flexy-panel-max-width: 100% !important;
     --ytd-watch-flexy-chat-max-width: 0px !important;
     max-width: 100% !important; padding: 0 !important;
 }
+
+/* Theater mode: let player fill full width, cap height to leave room for bar */
+ytd-watch-flexy[theater] #player-wide-container.ytd-watch-flexy,
+ytd-watch-flexy[theater] #player-theater-container.ytd-watch-flexy {
+    height: calc(100vh - var(--bar-h)) !important;
+    max-height: calc(100vh - var(--bar-h)) !important;
+}
+ytd-watch-flexy[full-bleed-player] #full-bleed-container.ytd-watch-flexy {
+    max-height: calc(100vh - var(--bar-h)) !important;
+}
+#movie_player {
+    max-height: calc(100vh - var(--bar-h)) !important;
+}
+
 ytd-watch-flexy #columns.ytd-watch-flexy,
 ytd-watch-flexy #primary.ytd-watch-flexy,
 ytd-watch-flexy #primary-inner.ytd-watch-flexy,
-ytd-watch-flexy #player-container-outer,
-ytd-watch-flexy #player-container-inner,
-ytd-watch-flexy #player-container,
-ytd-watch-flexy #player-theater-container,
-ytd-watch-flexy #full-bleed-container,
-ytd-watch-flexy #player-wide-container,
-ytd-watch-flexy #player,
 ytd-watch-flexy #primary,
 ytd-watch-flexy #primary-inner,
 ytd-watch-flexy #columns {
     max-width: 100% !important; width: 100% !important; padding: 0 !important;
 }
 
-/* Only cap the player height so controls stay above the bar.
-   Never touch .html5-video-container or video.html5-main-video —
-   YouTube handles aspect ratio internally; overriding breaks the video. */
-#movie_player {
-    max-height: calc(100vh - var(--bar-h)) !important;
-}
-
 /* Collapse everything below the player */
 ytd-watch-flexy #below {
     padding: 0 !important; margin: 0 !important;
     max-width: 100% !important; height: 0 !important; overflow: hidden !important;
+}
+/* Let #below be visible when details panel is open so #above-the-fold can escape */
+body.nvim-panel-details ytd-watch-flexy #below {
+    height: auto !important; overflow: visible !important;
 }
 ytd-watch-flexy #above-the-fold,
 ytd-watch-flexy ytd-watch-metadata,
@@ -227,9 +235,9 @@ ytd-watch-flexy ytd-comments#comments {
 ytd-watch-flexy #secondary,
 ytd-watch-flexy #secondary-inner,
 ytd-watch-flexy ytd-watch-next-secondary-results-renderer {
-    position: absolute !important; width: 1px !important; height: 1px !important;
-    overflow: hidden !important; clip: rect(0,0,0,0) !important;
-    clip-path: inset(50%) !important; opacity: 0 !important; pointer-events: none !important;
+    position: fixed !important;
+    left: -200vw !important; top: 0 !important;
+    visibility: hidden !important; pointer-events: none !important;
 }
 ytd-watch-flexy ytd-live-chat-frame#chat {
     position: fixed !important; left: -200vw !important; top: 0 !important;
@@ -237,15 +245,14 @@ ytd-watch-flexy ytd-live-chat-frame#chat {
 }
 
 /* 10. PANEL OVERLAYS */
-/* Backdrop */
-body.nvim-panel-comments::before,
-body.nvim-panel-recs::before,
-body.nvim-panel-details::before,
-body.nvim-panel-chat::before {
-    content: "" !important; position: fixed !important;
-    inset: 0 !important; background: rgba(0,0,0,0.65) !important;
-    z-index: 89999 !important; pointer-events: auto !important;
+/* Backdrop — injected div by JS, not ::before */
+#nvim-backdrop {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 89999; pointer-events: auto;
 }
+#nvim-backdrop.active { display: block !important; }
 
 /* Shared panel base — slides up from bottom */
 body.nvim-panel-comments ytd-watch-flexy #comments,
@@ -288,6 +295,9 @@ body.nvim-panel-chat ytd-watch-flexy ytd-live-chat-frame#chat {
 }
 
 /* Recs panel inner fix */
+body.nvim-panel-recs ytd-watch-flexy #secondary {
+    left: 50% !important; top: 50% !important; visibility: visible !important; pointer-events: auto !important;
+}
 body.nvim-panel-recs ytd-watch-flexy #secondary-inner,
 body.nvim-panel-recs ytd-watch-flexy ytd-watch-next-secondary-results-renderer {
     position: static !important; width: auto !important; height: auto !important;
@@ -350,11 +360,13 @@ body::after {
     height: var(--bar-h); line-height: var(--bar-h);
     background: var(--bg-dark); color: var(--fg-dim);
     font-family: var(--mono); font-size: 11px; padding: 0 12px;
-    z-index: 99999; border-top: 1px solid var(--border); pointer-events: none;
+    z-index: 99999; border-top: 1px solid #2a3040; pointer-events: none;
 }
 body.nvim-js-active::after { display: none !important; }
 
-body { padding-bottom: calc(var(--bar-h) + 2px) !important; background: var(--bg) !important; }
+/* Bar button hover states */
+#nvim-bar button:hover { background: var(--bg-hover) !important; }
+#nvim-bar button[data-active="true"] { color: var(--accent) !important; font-weight: bold !important; }
 
 /* 12. SEARCH OVERLAY */
 #nvim-search-overlay {
