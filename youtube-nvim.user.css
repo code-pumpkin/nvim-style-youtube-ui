@@ -197,15 +197,11 @@ ytd-watch-flexy #columns {
     max-width: 100% !important; width: 100% !important; padding: 0 !important;
 }
 
-/* Player fills viewport minus the single bar */
+/* Only cap the player height so controls stay above the bar.
+   Never touch .html5-video-container or video.html5-main-video —
+   YouTube handles aspect ratio internally; overriding breaks the video. */
 #movie_player {
-    width: 100vw !important;
-    height: calc(100vh - var(--bar-h)) !important;
     max-height: calc(100vh - var(--bar-h)) !important;
-}
-.html5-video-container, video.html5-main-video {
-    width: 100% !important;
-    height: 100% !important;
 }
 
 /* Collapse everything below the player */
