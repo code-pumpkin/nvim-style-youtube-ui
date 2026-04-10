@@ -225,9 +225,7 @@ ytd-watch-flexy #description,
 ytd-watch-flexy #description-inner,
 ytd-watch-flexy ytd-text-inline-expander,
 ytd-watch-flexy #snippet,
-ytd-watch-flexy #plain-snippet-text { display: none !important; }
-
-ytd-watch-flexy #comments,
+ytd-watch-flexy #plain-snippet-text { display: none !important; }ytd-watch-flexy #comments,
 ytd-watch-flexy ytd-comments#comments {
     position: fixed !important; left: -200vw !important; top: 0 !important;
     visibility: hidden !important; pointer-events: none !important;
@@ -245,14 +243,7 @@ ytd-watch-flexy ytd-live-chat-frame#chat {
 }
 
 /* 10. PANEL OVERLAYS */
-/* Backdrop — injected div by JS, not ::before */
-#nvim-backdrop {
-    display: none;
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.65);
-    z-index: 89999; pointer-events: auto;
-}
-#nvim-backdrop.active { display: block !important; }
+/* Backdrop — injected and controlled entirely by JS inline styles */
 
 /* Shared panel base — slides up from bottom */
 body.nvim-panel-comments ytd-watch-flexy #comments,
@@ -306,47 +297,77 @@ body.nvim-panel-recs ytd-watch-flexy ytd-watch-next-secondary-results-renderer {
 }
 body.nvim-panel-recs ytd-watch-flexy #secondary-inner { max-width: 100% !important; width: 100% !important; }
 
-/* Details panel — show metadata + description, hide nothing else */
+/* Details panel — v5 desc approach, proven working */
 body.nvim-panel-details ytd-watch-flexy #above-the-fold,
 body.nvim-panel-details ytd-watch-flexy ytd-watch-metadata,
 body.nvim-panel-details ytd-watch-flexy #top-row,
 body.nvim-panel-details ytd-watch-flexy #bottom-row,
 body.nvim-panel-details ytd-watch-flexy #description,
+body.nvim-panel-details ytd-watch-flexy ytd-watch-metadata #description,
 body.nvim-panel-details ytd-watch-flexy #description-inner,
 body.nvim-panel-details ytd-watch-flexy ytd-text-inline-expander,
+body.nvim-panel-details ytd-watch-flexy #snippet,
 body.nvim-panel-details ytd-watch-flexy #plain-snippet-text,
 body.nvim-panel-details ytd-watch-flexy ytd-structured-description-content-renderer,
+body.nvim-panel-details ytd-watch-flexy #attributed-snippet-text,
 body.nvim-panel-details ytd-watch-flexy ytd-text-inline-expander #content,
-body.nvim-panel-details ytd-watch-flexy yt-attributed-string,
-body.nvim-panel-details ytd-watch-flexy yt-formatted-string {
+body.nvim-panel-details ytd-watch-flexy ytd-text-inline-expander .content {
     display: block !important; visibility: visible !important;
     pointer-events: auto !important; position: static !important;
-    max-height: none !important; overflow: visible !important;
-    -webkit-line-clamp: unset !important; -webkit-box-orient: unset !important;
+    left: auto !important; top: auto !important;
 }
-body.nvim-panel-details ytd-watch-flexy #snippet,
+
+body.nvim-panel-details ytd-watch-flexy #above-the-fold {
+    position: fixed !important;
+    top: 50% !important; left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 62vw !important; max-width: 860px !important;
+    height: calc(68vh - var(--bar-h)) !important;
+    overflow-y: auto !important; overflow-x: hidden !important;
+    background: var(--bg-float) !important;
+    border: 1px solid var(--accent) !important;
+    padding: 16px !important;
+    z-index: 90000 !important;
+    box-shadow: 0 8px 48px rgba(0,0,0,0.8) !important;
+    visibility: visible !important; pointer-events: auto !important;
+    font-family: var(--mono) !important; font-size: 12px !important; color: var(--fg) !important;
+    animation: panel-in 0.18s ease !important;
+}
+
+/* show top-row (title/channel/actions) AND description from bottom-row */
+body.nvim-panel-details ytd-watch-flexy #top-row { display: flex !important; flex-wrap: wrap !important; }
+body.nvim-panel-details ytd-watch-flexy #bottom-row { display: block !important; }
+body.nvim-panel-details ytd-watch-flexy #bottom-row > *:not(#description) { display: none !important; }
+
+/* force description fully expanded */
+body.nvim-panel-details ytd-watch-flexy ytd-text-inline-expander,
+body.nvim-panel-details ytd-watch-flexy ytd-structured-description-content-renderer,
+body.nvim-panel-details ytd-watch-flexy #description-inner,
+body.nvim-panel-details ytd-watch-flexy #description {
+    max-height: none !important; overflow: visible !important;
+    display: block !important; height: auto !important;
+}
 body.nvim-panel-details ytd-watch-flexy #expand,
 body.nvim-panel-details ytd-watch-flexy #collapse,
 body.nvim-panel-details ytd-watch-flexy [slot="expand-button"],
 body.nvim-panel-details ytd-watch-flexy [slot="collapse-button"] { display: none !important; }
 
-body.nvim-panel-details ytd-watch-flexy #above-the-fold {
-    font-family: var(--mono) !important; font-size: 12px !important; color: var(--fg) !important;
-    display: flex !important; flex-direction: column !important;
-}
-
-/* Stats bar */
+/* Stats + title bar injected by JS */
 #nvim-stats {
     display: flex !important; gap: 12px !important; flex-wrap: wrap !important;
     padding: 0 0 10px 0 !important; margin-bottom: 10px !important;
     border-bottom: 1px solid var(--border) !important;
-    font-family: var(--mono) !important; font-size: 11px !important; color: var(--fg-dim) !important;
+    font-family: var(--mono) !important; font-size: 11px !important;
 }
-#nvim-stats .v { color: var(--fg) !important; font-weight: bold !important; }
-#nvim-stats .likes  { color: var(--green) !important; }
+#nvim-stats .views    { color: var(--cyan) !important; }
+#nvim-stats .likes    { color: var(--green) !important; }
 #nvim-stats .dislikes { color: var(--red) !important; }
-#nvim-stats .views  { color: var(--cyan) !important; }
-#nvim-stats .date   { color: var(--yellow) !important; }
+#nvim-stats .date     { color: var(--yellow) !important; }
+#nvim-title-inject {
+    margin-bottom: 10px !important;
+    padding-bottom: 10px !important;
+    border-bottom: 1px solid var(--border) !important;
+}
 
 /* Live chat iframe */
 body.nvim-panel-chat ytd-watch-flexy ytd-live-chat-frame#chat iframe {
@@ -364,7 +385,12 @@ body::after {
 }
 body.nvim-js-active::after { display: none !important; }
 
-/* Bar button hover states */
+body:fullscreen #nvim-bar,
+body:-webkit-full-screen #nvim-bar,
+body:-moz-full-screen #nvim-bar { display: none !important; }
+:fullscreen body,
+:-webkit-full-screen body,
+:-moz-full-screen body { padding-bottom: 0 !important; }
 #nvim-bar button:hover { background: var(--bg-hover) !important; }
 #nvim-bar button[data-active="true"] { color: var(--accent) !important; font-weight: bold !important; }
 
