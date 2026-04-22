@@ -1,0 +1,365 @@
+/* ==UserStyle==
+@name         YouTube Mindful v7 — Desktop
+@namespace    github.com/code-pumpkin/nvim-style-youtube-ui
+@version      7.0.0
+@description  Mindful YouTube for desktop — keyboard-driven, inline panels, calm focus.
+@author       codePumpkin
+@license      MIT
+==/UserStyle== */
+
+@-moz-document domain("www.youtube.com") {
+
+/* 0. PALETTE */
+:root {
+    --bg:         #0a0c10;
+    --bg-dark:    #080a0e;
+    --bg-float:   #0f1318;
+    --bg-hover:   #1a2030;
+    --bg-sel:     #1a2030;
+    --fg:         #e8e3da;
+    --fg-dim:     #7a8394;
+    --fg-dark:    #3d4452;
+    --border:     #2a3040;
+    --accent:     #e6b450;
+    --green:      #7fd962;
+    --red:        #d95757;
+    --yellow:     #ffb454;
+    --cyan:       #73b8ff;
+    --magenta:    #d2a6ff;
+    --bar-h:      32px;
+    --mono:       "JetBrains Mono","Fira Code","Cascadia Code",monospace;
+}
+
+/* 1. GLOBAL */
+html, body, ytd-app, #content, ytd-browse, ytd-search,
+ytd-watch-flexy, ytd-page-manager, ytd-two-column-browse-results-renderer,
+ytd-rich-grid-renderer, #page-manager, tp-yt-app-drawer {
+    background-color: var(--bg) !important;
+    color: var(--fg) !important;
+}
+html[dark] {
+    --yt-spec-base-background:        var(--bg) !important;
+    --yt-spec-raised-background:      var(--bg) !important;
+    --yt-spec-menu-background:        var(--bg-float) !important;
+    --yt-spec-general-background-a:   var(--bg) !important;
+    --yt-spec-general-background-b:   var(--bg) !important;
+    --yt-spec-general-background-c:   var(--bg) !important;
+    --yt-spec-brand-background-solid: var(--bg) !important;
+    --yt-spec-text-primary:           var(--fg) !important;
+    --yt-spec-text-secondary:         var(--fg-dim) !important;
+    --yt-spec-badge-chip-background:  var(--bg-sel) !important;
+    --yt-spec-10-percent-layer:       var(--bg-hover) !important;
+}
+
+/* 2. NUKE MASTHEAD */
+#masthead-container, ytd-masthead, #masthead { display: none !important; }
+ytd-app { --ytd-masthead-height: 0px !important; margin-top: 0 !important; }
+#page-manager { margin-top: 0 !important; }
+
+/* 3. NUKE SIDEBAR */
+tp-yt-app-drawer, #guide, #guide-button, ytd-mini-guide-renderer,
+#guide-inner-content, app-drawer, tp-yt-app-drawer[opened], #guide-wrapper {
+    display: none !important; width: 0 !important;
+}
+ytd-page-manager { margin-left: 0 !important; }
+ytd-app[guide-persistent-and-visible] #page-manager.ytd-app { margin-left: 0 !important; }
+
+/* 4. NUKE CHIPS / BLUR */
+ytd-feed-filter-chip-bar-renderer, #chips-wrapper,
+#header-bar ytd-feed-filter-chip-bar-renderer,
+ytd-browse yt-chip-cloud-renderer, ytd-search yt-chip-cloud-renderer,
+#header.ytd-rich-grid-renderer, ytd-rich-grid-renderer > #header,
+#immersive-header-container, ytd-browse[page-subtype="home"] #header,
+ytd-browse #header.ytd-browse, #frosted-glass { display: none !important; }
+ytd-browse[page-subtype="home"] *, ytd-search * {
+    backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+}
+
+/* 5. HOME — 6 per row */
+ytd-rich-grid-renderer {
+    --ytd-rich-grid-items-per-row: 6 !important;
+    --ytd-rich-grid-posts-per-row: 6 !important;
+    --ytd-rich-grid-slim-items-per-row: 6 !important;
+    max-width: 100% !important; width: 100% !important; padding: 4px !important;
+    counter-reset: video-counter;
+}
+ytd-rich-grid-renderer #contents.ytd-rich-grid-renderer { padding: 0 4px !important; }
+ytd-rich-grid-row { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+ytd-rich-grid-row #contents.ytd-rich-grid-row { display: flex !important; flex-wrap: nowrap !important; gap: 4px !important; }
+ytd-rich-item-renderer {
+    position: relative;
+    width: calc(100% / 6 - 10px) !important; max-width: calc(100% / 6 - 10px) !important;
+    min-width: 0 !important; margin: 6px 0 !important; padding: 0 4px 8px 4px !important;
+}
+ytd-rich-item-renderer::before {
+    content: counter(video-counter); counter-increment: video-counter;
+    position: absolute; left: 4px; top: 4px;
+    font-family: var(--mono); font-size: 9px; color: var(--fg-dark); z-index: 10; opacity: 0.6;
+}
+ytd-rich-item-renderer ytd-thumbnail, ytd-thumbnail img { border-radius: 0 !important; }
+#video-title-link, #video-title {
+    font-size: 12px !important; line-height: 1.3 !important;
+    font-family: var(--mono) !important; color: var(--fg) !important;
+    -webkit-line-clamp: 2 !important; max-height: 2.6em !important; overflow: hidden !important;
+}
+ytd-channel-name, #channel-name, .ytd-channel-name a, #text.ytd-channel-name {
+    font-size: 11px !important; font-family: var(--mono) !important; color: var(--fg-dim) !important;
+}
+#metadata-line, .ytd-video-meta-block, #metadata-line span {
+    font-size: 10px !important; font-family: var(--mono) !important; color: var(--fg-dark) !important;
+}
+ytd-rich-item-renderer #avatar-link,
+ytd-rich-item-renderer ytd-channel-thumbnail-with-link-renderer { display: none !important; }
+#details.ytd-rich-grid-media, #meta.ytd-rich-grid-media { padding: 4px 2px !important; margin: 0 !important; }
+ytd-rich-item-renderer:hover { outline: 1px solid var(--accent) !important; outline-offset: -1px; }
+
+/* 6. NO BORDER RADIUS */
+*, *::after, *::before { border-radius: 0 !important; }
+.ytp-scrubber-button, .ytp-volume-slider-handle, .ytp-spinner-circle { border-radius: 50% !important; }
+
+/* 7. HIDE SHORTS + JUNK */
+ytd-rich-section-renderer, ytd-reel-shelf-renderer, [is-shorts],
+ytd-rich-shelf-renderer[is-shorts],
+ytd-mini-guide-entry-renderer[aria-label="Shorts"],
+ytd-guide-entry-renderer:has(a[title="Shorts"]),
+ytd-search ytd-reel-shelf-renderer,
+ytd-search ytd-video-renderer:has([overlay-style="SHORTS"]),
+ytd-search ytd-video-renderer:has(a[href*="/shorts/"]),
+a[href*="/shorts/"],
+ytd-grid-video-renderer:has(a[href*="/shorts/"]),
+ytd-video-renderer:has(a[href*="/shorts/"]),
+ytd-compact-video-renderer:has(a[href*="/shorts/"]),
+yt-tab-shape[tab-title="Shorts"],
+ytd-post-renderer, ytd-backstage-post-thread-renderer,
+ytd-rich-shelf-renderer, ytd-compact-video-renderer[is-shorts],
+ytd-movie-offering-module-renderer, ytd-compact-movie-renderer,
+ytd-merch-shelf-renderer, ytd-ticket-shelf-renderer { display: none !important; }
+
+/* 8. SEARCH PAGE */
+ytd-search #page-manager, ytd-search ytd-two-column-search-results-renderer,
+ytd-search ytd-section-list-renderer {
+    max-width: 100% !important; width: 100% !important; padding: 0 !important; margin: 0 !important;
+}
+ytd-search ytd-section-list-renderer #contents { max-width: 100% !important; padding: 8px !important; }
+ytd-search ytd-item-section-renderer #contents {
+    display: grid !important; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+    gap: 12px !important; max-width: 100% !important; align-items: start !important;
+}
+ytd-search ytd-video-renderer {
+    display: flex !important; flex-direction: column !important;
+    width: 100% !important; max-width: 100% !important; min-width: 0 !important;
+    padding: 0 !important; margin: 0 !important; background: var(--bg) !important; overflow: hidden !important;
+}
+ytd-search ytd-video-renderer #dismissible { display: flex !important; flex-direction: column !important; width: 100% !important; }
+ytd-search ytd-video-renderer ytd-thumbnail { width: 100% !important; max-width: 100% !important; margin: 0 !important; }
+ytd-search ytd-video-renderer ytd-thumbnail img { width: 100% !important; height: auto !important; aspect-ratio: 16/9 !important; object-fit: cover !important; }
+ytd-search ytd-video-renderer .text-wrapper { display: flex !important; flex-direction: column !important; width: 100% !important; padding: 6px 4px !important; }
+ytd-search ytd-video-renderer #channel-thumbnail,
+ytd-search ytd-video-renderer #avatar-link { display: none !important; }
+ytd-search ytd-secondary-search-container-renderer,
+ytd-search #secondary.ytd-two-column-search-results-renderer { display: none !important; }
+ytd-search ytd-video-renderer #video-title, ytd-search ytd-video-renderer h3.title-and-badge {
+    font-size: 12px !important; font-family: var(--mono) !important; color: var(--fg) !important;
+    -webkit-line-clamp: 2 !important; overflow: hidden !important; line-height: 1.4 !important;
+}
+ytd-search ytd-video-renderer ytd-channel-name { font-size: 10px !important; font-family: var(--mono) !important; color: var(--fg-dim) !important; }
+ytd-search ytd-promoted-sparkles-web-renderer, ytd-search ytd-shelf-renderer,
+ytd-search ytd-ad-slot-renderer, ytd-search ytd-promoted-video-renderer { display: none !important; }
+ytd-search ytd-video-renderer:hover { outline: 1px solid var(--accent) !important; outline-offset: -1px; }
+
+/* 9. WATCH PAGE */
+ytd-watch-flexy {
+    --ytd-watch-flexy-panel-max-width: 100% !important;
+    max-width: 100% !important; padding: 0 !important;
+}
+ytd-watch-flexy #columns.ytd-watch-flexy,
+ytd-watch-flexy #primary.ytd-watch-flexy,
+ytd-watch-flexy #primary-inner.ytd-watch-flexy {
+    max-width: 100% !important; width: 100% !important; padding: 0 !important;
+}
+
+/* Default: player fills viewport minus bar */
+ytd-watch-flexy[theater] #player-wide-container.ytd-watch-flexy,
+ytd-watch-flexy[theater] #player-theater-container.ytd-watch-flexy {
+    height: calc(100vh - var(--bar-h)) !important;
+    max-height: calc(100vh - var(--bar-h)) !important;
+}
+ytd-watch-flexy[full-bleed-player] #full-bleed-container.ytd-watch-flexy {
+    max-height: calc(100vh - var(--bar-h)) !important;
+}
+#movie_player { max-height: calc(100vh - var(--bar-h)) !important; }
+
+/* Hide below-player, secondary, comments, chat by default */
+ytd-watch-flexy #below { padding: 0 !important; margin: 0 !important; max-width: 100% !important; height: 0 !important; overflow: hidden !important; }
+ytd-watch-flexy #above-the-fold, ytd-watch-flexy ytd-watch-metadata,
+ytd-watch-flexy #top-row, ytd-watch-flexy #bottom-row,
+ytd-watch-flexy #description, ytd-watch-flexy #description-inner,
+ytd-watch-flexy ytd-text-inline-expander, ytd-watch-flexy #snippet,
+ytd-watch-flexy #plain-snippet-text { display: none !important; }
+
+ytd-watch-flexy #comments, ytd-watch-flexy ytd-comments#comments,
+ytd-watch-flexy #secondary, ytd-watch-flexy #secondary-inner,
+ytd-watch-flexy ytd-watch-next-secondary-results-renderer,
+ytd-watch-flexy ytd-live-chat-frame#chat {
+    position: fixed !important; left: -200vw !important; visibility: hidden !important; pointer-events: none !important;
+}
+
+/* 10. INLINE PANELS — video shrinks, panel appears below */
+
+/* When any panel is open, shrink player */
+body[class*="mindful-panel-"] ytd-watch-flexy[theater] #player-theater-container,
+body[class*="mindful-panel-"] ytd-watch-flexy[theater] #player-wide-container {
+    height: 55vh !important; max-height: 55vh !important;
+}
+body[class*="mindful-panel-"] #movie_player { max-height: 55vh !important; }
+
+/* --- Details --- */
+body.mindful-panel-details ytd-watch-flexy #below { height: auto !important; overflow: visible !important; }
+body.mindful-panel-details ytd-watch-flexy #above-the-fold,
+body.mindful-panel-details ytd-watch-flexy ytd-watch-metadata,
+body.mindful-panel-details ytd-watch-flexy #top-row,
+body.mindful-panel-details ytd-watch-flexy #bottom-row,
+body.mindful-panel-details ytd-watch-flexy #description,
+body.mindful-panel-details ytd-watch-flexy #description-inner,
+body.mindful-panel-details ytd-watch-flexy ytd-text-inline-expander,
+body.mindful-panel-details ytd-watch-flexy #snippet,
+body.mindful-panel-details ytd-watch-flexy #plain-snippet-text,
+body.mindful-panel-details ytd-watch-flexy ytd-structured-description-content-renderer,
+body.mindful-panel-details ytd-watch-flexy #attributed-snippet-text,
+body.mindful-panel-details ytd-watch-flexy ytd-text-inline-expander #content,
+body.mindful-panel-details ytd-watch-flexy ytd-text-inline-expander .content {
+    display: block !important; visibility: visible !important;
+    pointer-events: auto !important; position: static !important;
+}
+body.mindful-panel-details ytd-watch-flexy #above-the-fold {
+    background: var(--bg-float) !important; border-left: 3px solid var(--accent) !important;
+    padding: 14px !important; max-height: calc(45vh - var(--bar-h)) !important; overflow-y: auto !important;
+    font-family: var(--mono) !important; font-size: 12px !important; color: var(--fg) !important;
+}
+body.mindful-panel-details ytd-watch-flexy #top-row { display: flex !important; flex-wrap: wrap !important; }
+body.mindful-panel-details ytd-watch-flexy #bottom-row { display: block !important; }
+body.mindful-panel-details ytd-watch-flexy #bottom-row > *:not(#description) { display: none !important; }
+body.mindful-panel-details ytd-watch-flexy ytd-text-inline-expander,
+body.mindful-panel-details ytd-watch-flexy #description-inner,
+body.mindful-panel-details ytd-watch-flexy #description {
+    max-height: none !important; overflow: visible !important; display: block !important; height: auto !important;
+}
+body.mindful-panel-details ytd-watch-flexy #expand,
+body.mindful-panel-details ytd-watch-flexy #collapse,
+body.mindful-panel-details ytd-watch-flexy [slot="expand-button"],
+body.mindful-panel-details ytd-watch-flexy [slot="collapse-button"] { display: none !important; }
+
+/* --- Comments --- */
+body.mindful-panel-comments ytd-watch-flexy #comments,
+body.mindful-panel-comments ytd-watch-flexy ytd-comments#comments {
+    position: static !important; left: auto !important;
+    visibility: visible !important; pointer-events: auto !important;
+    background: var(--bg-float) !important; border-left: 3px solid var(--magenta) !important;
+    padding: 14px !important; max-height: calc(45vh - var(--bar-h)) !important; overflow-y: auto !important;
+    width: 100% !important;
+}
+
+/* --- Recs --- */
+body.mindful-panel-recs ytd-watch-flexy #secondary,
+body.mindful-panel-recs ytd-watch-flexy #secondary-inner,
+body.mindful-panel-recs ytd-watch-flexy ytd-watch-next-secondary-results-renderer {
+    position: static !important; left: auto !important;
+    visibility: visible !important; pointer-events: auto !important;
+    width: 100% !important; max-width: 100% !important; height: auto !important;
+    overflow: visible !important; clip: auto !important; clip-path: none !important; opacity: 1 !important;
+}
+body.mindful-panel-recs ytd-watch-flexy #secondary {
+    background: var(--bg-float) !important; border-left: 3px solid var(--cyan) !important;
+    padding: 14px !important; max-height: calc(45vh - var(--bar-h)) !important; overflow-y: auto !important;
+}
+
+/* --- Chat --- */
+body.mindful-panel-chat ytd-watch-flexy ytd-live-chat-frame#chat {
+    position: static !important; left: auto !important;
+    visibility: visible !important; pointer-events: auto !important;
+    background: var(--bg-float) !important; border-left: 3px solid var(--magenta) !important;
+    width: 100% !important; height: calc(45vh - var(--bar-h)) !important;
+}
+body.mindful-panel-chat ytd-watch-flexy ytd-live-chat-frame#chat iframe {
+    width: 100% !important; height: 100% !important;
+}
+
+/* Stats injected by JS */
+#mindful-stats {
+    display: flex !important; gap: 12px !important; flex-wrap: wrap !important;
+    padding: 0 0 10px 0 !important; margin-bottom: 10px !important;
+    border-bottom: 1px solid var(--border) !important;
+    font-family: var(--mono) !important; font-size: 11px !important;
+}
+#mindful-title-inject {
+    margin-bottom: 10px !important; padding-bottom: 10px !important;
+    border-bottom: 1px solid var(--border) !important;
+}
+
+/* 11. STATUS BAR */
+body::after {
+    content: "MINDFUL  ,c comm | ,e recs | ,d details | ,l chat | ,, search | \\ back | H home";
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: var(--bar-h); line-height: var(--bar-h);
+    background: var(--bg-dark); color: var(--fg-dim);
+    font-family: var(--mono); font-size: 11px; padding: 0 12px;
+    z-index: 99999; border-top: 1px solid var(--border); pointer-events: none;
+}
+body.mindful-js-active::after { display: none !important; }
+
+body:fullscreen #mindful-bar, body:-webkit-full-screen #mindful-bar { display: none !important; }
+:fullscreen body, :-webkit-full-screen body { padding-bottom: 0 !important; }
+:fullscreen #movie_player, :-webkit-full-screen #movie_player { max-height: 100vh !important; height: 100vh !important; }
+:fullscreen ytd-watch-flexy, :-webkit-full-screen ytd-watch-flexy { height: 100vh !important; max-height: 100vh !important; }
+
+/* 12. SEARCH OVERLAY */
+#mindful-search-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+    z-index: 100000; display: none; align-items: flex-start;
+    justify-content: center; padding-top: 25vh;
+}
+#mindful-search-overlay.active { display: flex !important; }
+#mindful-search-overlay input {
+    width: 60%; max-width: 700px; background: var(--bg-float);
+    border: none; border-bottom: 2px solid var(--accent);
+    color: var(--fg); font-family: var(--mono); font-size: 18px;
+    padding: 10px 4px; outline: none;
+}
+#mindful-search-overlay input::placeholder { color: var(--fg-dark); }
+
+/* 13. SCROLLBAR */
+::-webkit-scrollbar { width: 5px !important; height: 5px !important; }
+::-webkit-scrollbar-track { background: var(--bg-dark) !important; }
+::-webkit-scrollbar-thumb { background: var(--fg-dark) !important; }
+::-webkit-scrollbar-thumb:hover { background: var(--fg-dim) !important; }
+
+/* 14. MISC */
+ytd-notification-topbar-button-renderer, #voice-search-button { display: none !important; }
+tp-yt-paper-dialog, ytd-popup-container, ytd-menu-popup-renderer {
+    background: var(--bg-float) !important; color: var(--fg) !important;
+    border: 1px solid var(--border) !important;
+}
+a, a:visited { color: var(--fg) !important; }
+a:hover { color: var(--accent) !important; }
+yt-button-shape button, ytd-button-renderer, tp-yt-paper-button {
+    background: var(--bg-sel) !important; color: var(--fg) !important;
+    border: 1px solid var(--border) !important; font-family: var(--mono) !important;
+}
+
+/* 15. CHANNEL PAGES */
+ytd-browse[page-subtype="channels"] { background: var(--bg) !important; }
+ytd-c4-tabbed-header-renderer, ytd-tabbed-page-header { background: var(--bg-dark) !important; }
+ytd-c4-tabbed-header-renderer .banner-visible-area,
+ytd-tabbed-page-header #page-header-banner { opacity: 0.4 !important; max-height: 100px !important; overflow: hidden !important; }
+yt-dynamic-text-view-model h1 { font-family: var(--mono) !important; color: var(--fg) !important; font-size: 15px !important; }
+yt-tab-group-shape, #tabsContent { background: var(--bg-dark) !important; border-bottom: 1px solid var(--border) !important; }
+yt-tab-shape .yt-tab-shape__tab {
+    font-family: var(--mono) !important; font-size: 11px !important;
+    color: var(--fg-dim) !important; text-transform: uppercase !important; padding: 8px 14px !important;
+}
+yt-tab-shape .yt-tab-shape__tab--tab-selected { color: var(--accent) !important; }
+yt-tab-shape .yt-tab-shape__tab-bar--tab-bar-selected { background: var(--accent) !important; }
+yt-tab-shape[tab-title="Shorts"], yt-tab-shape[tab-title="Community"] { display: none !important; }
+ytd-browse[page-subtype="channels"] ytd-rich-grid-renderer { --ytd-rich-grid-items-per-row: 5 !important; }
+
+} /* end @-moz-document */
